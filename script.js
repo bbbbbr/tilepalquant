@@ -1,4 +1,5 @@
 import { Action, ColorZeroBehaviour, Dither, DitherPattern } from "./enums.js";
+import { encodeIndexedPngToBase64 } from "./png_indexed.js";
 const body = document.getElementById("body");
 const imageSelector = document.getElementById("image_selector");
 const tileWidthInput = document.getElementById("tile_width");
@@ -170,14 +171,8 @@ quantizeButton.addEventListener("click", () => {
     const settingsStr = `-${tileWidthInput.value}x${tileHeightInput.value}-${numPalettesInput.value}p${colorsPerPaletteInput.value}c-${colorZeroAbbreviation}`;
     const totalPaletteColors = parseInt(numPalettesInput.value, radix) *
         parseInt(colorsPerPaletteInput.value, radix);
-    if (totalPaletteColors > 256) {
-        quantizedImageDownload.download =
-            sourceImageName + settingsStr + ".png";
-    }
-    else {
-        quantizedImageDownload.download =
-            sourceImageName + settingsStr + ".bmp";
-    }
+    quantizedImageDownload.download =
+        sourceImageName + settingsStr + ".png";
     palettesImageDownload.download =
         sourceImageName + settingsStr + "-palette.png";
     if (worker)
@@ -205,7 +200,7 @@ quantizeButton.addEventListener("click", () => {
                 quantizedImageDownload.href = quantizedImage.toDataURL();
             }
             else {
-                quantizedImageDownload.href = bmpToDataURL(imageData.width, imageData.height, imageData.paletteData, imageData.colorIndexes);
+                quantizedImageDownload.href = encodeIndexedPngToBase64(imageData.width, imageData.height, imageData.paletteData, totalPaletteColors, imageData.colorIndexes);
             }
         }
         else if (data.action === Action.UpdatePalettes) {
@@ -302,18 +297,18 @@ function uint8ToBase64(arr) {
         .map((_, i) => String.fromCharCode(arr[i]))
         .join(""));
 }
-function write32Le(bmpData, index, value) {
-    bmpData[index] = value % 256;
+function write32Le(outBuffer, index, value) {
+    outBuffer[index] = value % 256;
     value = Math.floor(value / 256);
-    bmpData[index + 1] = value % 256;
+    outBuffer[index + 1] = value % 256;
     value = Math.floor(value / 256);
-    bmpData[index + 2] = value % 256;
+    outBuffer[index + 2] = value % 256;
     value = Math.floor(value / 256);
-    bmpData[index + 3] = value % 256;
+    outBuffer[index + 3] = value % 256;
 }
-function write16Le(bmpData, index, value) {
-    bmpData[index] = value % 256;
+function write16Le(outBuffer, index, value) {
+    outBuffer[index] = value % 256;
     value = Math.floor(value / 256);
-    bmpData[index + 1] = value % 256;
+    outBuffer[index + 1] = value % 256;
 }
 //# sourceMappingURL=script.js.map

@@ -940,17 +940,17 @@ function quantizeTiles(palettes, image, useDither) {
         toNbitColor(transparentColor, bitsPerChannel);
     const colorZero = cloneColor(colorZeroValue);
     toNbitColor(colorZero, bitsPerChannel);
-    const bmpWidth = Math.ceil(image.width / 4) * 4;
+    const exportIndexedWidth = Math.ceil(image.width / 4) * 4;
     const quantizedImage = {
         width: image.width,
         height: image.height,
         data: new Uint8ClampedArray(image.data.length),
         totalPaletteColors: numPalettes * colorsPerPalette,
         paletteData: new Uint8ClampedArray(1024),
-        colorIndexes: new Uint8ClampedArray(bmpWidth * image.height),
+        colorIndexes: new Uint8ClampedArray(exportIndexedWidth * image.height),
     };
     if (numPalettes * colorsPerPalette <= 256) {
-        addBmpColors(reducedPalettes, quantizedImage.paletteData);
+        addExportIndexedColors(reducedPalettes, quantizedImage.paletteData);
     }
     for (let startY = 0; startY < image.height; startY += tileHeight) {
         for (let startX = 0; startX < image.width; startX += tileWidth) {
@@ -971,7 +971,7 @@ function quantizeTiles(palettes, image, useDither) {
             for (let y = startY; y < endY; y++) {
                 for (let x = startX; x < endX; x++) {
                     const index = 4 * (x + image.width * y);
-                    const bmpIndex = x + bmpWidth * (image.height - 1 - y);
+                    const exportIndexedSlot = x + exportIndexedWidth * y;
                     const color = [
                         image.data[index],
                         image.data[index + 1],
@@ -987,7 +987,7 @@ function quantizeTiles(palettes, image, useDither) {
                         quantizedImage.data[index + 1] = image.data[index + 1];
                         quantizedImage.data[index + 2] = image.data[index + 2];
                         quantizedImage.data[index + 3] = image.data[index + 3];
-                        quantizedImage.colorIndexes[bmpIndex] =
+                        quantizedImage.colorIndexes[exportIndexedSlot] =
                             closestPaletteIndex * colorsPerPalette;
                     }
                     else {
@@ -1007,7 +1007,7 @@ function quantizeTiles(palettes, image, useDither) {
                         quantizedImage.data[index + 1] = paletteColor[1];
                         quantizedImage.data[index + 2] = paletteColor[2];
                         quantizedImage.data[index + 3] = 255;
-                        quantizedImage.colorIndexes[bmpIndex] =
+                        quantizedImage.colorIndexes[exportIndexedSlot] =
                             closestPaletteIndex * colorsPerPalette +
                                 closestColorIndex +
                                 adjustedIndex;
@@ -1017,19 +1017,20 @@ function quantizeTiles(palettes, image, useDither) {
         }
     }
     return quantizedImage;
-    function addBmpColors(palettes, bmpPalette) {
+    function addExportIndexedColors(palettes, exportIndexedPalette) {
         let i = 0;
+        // Packs palette data to BGRA8888
         for (const pal of palettes) {
             if (adjustedIndex === 1) {
-                bmpPalette[i] = colorZero[2];
-                bmpPalette[i + 1] = colorZero[1];
-                bmpPalette[i + 2] = colorZero[0];
+                exportIndexedPalette[i] = colorZero[2];
+                exportIndexedPalette[i + 1] = colorZero[1];
+                exportIndexedPalette[i + 2] = colorZero[0];
                 i += 4;
             }
             for (const color of pal) {
-                bmpPalette[i] = color[2];
-                bmpPalette[i + 1] = color[1];
-                bmpPalette[i + 2] = color[0];
+                exportIndexedPalette[i] = color[2];
+                exportIndexedPalette[i + 1] = color[1];
+                exportIndexedPalette[i + 2] = color[0];
                 i += 4;
             }
         }
