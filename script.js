@@ -1,5 +1,5 @@
 import { Action, ColorZeroBehaviour, Dither, DitherPattern } from "./enums.js";
-import { encodeIndexedPngToBase64 } from "./png_indexed.js";
+import { encodeIndexedPngToBase64, pngExportSetHiAttribMode, encodeAttributeMapToBase64 } from "./png_indexed.js";
 const body = document.getElementById("body");
 const imageSelector = document.getElementById("image_selector");
 const tileWidthInput = document.getElementById("tile_width");
@@ -8,6 +8,7 @@ const numPalettesInput = document.getElementById("palette_num");
 const colorsPerPaletteInput = document.getElementById("colors_per_palette");
 const bitsPerChannelInput = document.getElementById("bits_per_channel");
 const fractionOfPixelsInput = document.getElementById("fraction_of_pixels");
+const hiAttribEnabledInput = document.getElementById("hi_attrib_enabled");
 const integerInputs = [
     [tileWidthInput, 8],
     [tileHeightInput, 8],
@@ -128,9 +129,15 @@ imageSelector.addEventListener("change", () => {
 });
 let inProgress = false;
 let quantizedImageDownload = document.createElement("a");
-let palettesImageDownload = document.createElement("a");
 let quantizedImage = document.createElement("canvas");
+let palettesImageDownload = document.createElement("a");
 let palettesImage = document.createElement("canvas");
+
+let quantizedImageHiAttrib = document.createElement("canvas");
+let quantizedImageDownloadHiAttib = document.createElement("a");
+
+let quantizedImageDownloadHiAttibMap = document.createElement("a");
+
 let worker = null;
 const quantizeButton = document.getElementById("quantizeButton");
 const quantizedImages = document.getElementById("quantized_images");
@@ -144,19 +151,46 @@ quantizeButton.addEventListener("click", () => {
         quantizedImage.width = sourceImage.width;
         quantizedImage.height = sourceImage.height;
         quantizedImage.style.marginTop = "8px";
-        quantizedImage.style.marginLeft = "8px";
+        quantizedImage.style.marginLeft = "8px";        
         quantizedImageDownload = document.createElement("a");
+        quantizedImageDownload.title = "Full quantization image output";
         quantizedImageDownload.appendChild(quantizedImage);
+
         palettesImage = document.createElement("canvas");
         palettesImage.width = 16;
         palettesImage.height = sourceImage.height;
         palettesImage.style.marginTop = "8px";
         palettesImage.style.marginLeft = "8px";
         palettesImageDownload = document.createElement("a");
+        palettesImageDownload.title = "Image of palette for the quantization image \n(may not match actual palette order)";
         palettesImageDownload.appendChild(palettesImage);
+
+        if (hiAttribEnabledInput.checked) {
+            // Palette stripped output image
+            quantizedImageHiAttrib = document.createElement("canvas");
+            quantizedImageHiAttrib.width = sourceImage.width;
+            quantizedImageHiAttrib.height = sourceImage.height;
+            quantizedImageHiAttrib.style.marginTop = "8px";
+            quantizedImageHiAttrib.style.marginLeft = "8px";
+            quantizedImageDownloadHiAttib = document.createElement("a");
+            quantizedImageDownloadHiAttib.title = "Hi-Attrib Image with Palette data stripped off";
+            quantizedImageDownloadHiAttib.appendChild(quantizedImageHiAttrib);
+
+            // Binary NxN attribute map output
+            quantizedImageDownloadHiAttibMap = document.createElement("a");
+            quantizedImageDownloadHiAttibMap.title = "Hi-Attrib attribute map for palette-stripped image \n(one entry byte per tile, no tile flip data)";
+            quantizedImageDownloadHiAttibMap.text = " + "  + tileWidthInput.value + "x" + tileHeightInput.value + " Attrib Map";
+        }
+
         const div = document.createElement("div");
         div.appendChild(quantizedImageDownload);
         div.appendChild(palettesImageDownload);
+
+        if (hiAttribEnabledInput.checked) {
+            div.appendChild(quantizedImageDownloadHiAttib);
+            div.appendChild(quantizedImageDownloadHiAttibMap);
+        }
+
         quantizedImages.prepend(div);
     }
     integerInputs.forEach(validateIntegerInput);
@@ -171,10 +205,13 @@ quantizeButton.addEventListener("click", () => {
     const settingsStr = `-${tileWidthInput.value}x${tileHeightInput.value}-${numPalettesInput.value}p${colorsPerPaletteInput.value}c-${colorZeroAbbreviation}`;
     const totalPaletteColors = parseInt(numPalettesInput.value, radix) *
         parseInt(colorsPerPaletteInput.value, radix);
-    quantizedImageDownload.download =
-        sourceImageName + settingsStr + ".png";
-    palettesImageDownload.download =
-        sourceImageName + settingsStr + "-palette.png";
+    quantizedImageDownload.download        = sourceImageName + settingsStr + ".png";
+    palettesImageDownload.download         = sourceImageName + settingsStr + "-palette.png";
+
+    quantizedImageDownloadHiAttib.download = sourceImageName + "_hi_attrib" + ".png";
+    quantizedImageDownloadHiAttibMap.download = sourceImageName + "_hi_attrib" + ".attrmap";
+
+
     if (worker)
         worker.terminate();
     worker = new Worker("./worker.js");
@@ -187,6 +224,7 @@ quantizeButton.addEventListener("click", () => {
             inProgress = false;
         }
         else if (data.action === Action.UpdateQuantizedImage) {
+            // Standard image first
             const imageData = data.imageData;
             const quantizedImageData = new window.ImageData(imageData.width, imageData.height);
             for (let i = 0; i < imageData.data.length; i++) {
@@ -196,11 +234,48 @@ quantizeButton.addEventListener("click", () => {
             quantizedImage.height = imageData.height;
             const ctx = quantizedImage.getContext("2d");
             ctx.putImageData(quantizedImageData, 0, 0);
+
+            if (hiAttribEnabledInput.checked) {
+                // Then palette stripped Hi-Attrib image
+                // Note! This is all for the preview only, not the actual downloaded image
+                //       which gets palette stripped in encodeIndexedPngToBase64()
+                const imageDataHiAttrib = data.imageData;
+                const quantizedImageDataHiAttrib = new window.ImageData(imageDataHiAttrib.width, imageDataHiAttrib.height);
+                const RGBA8888_SZ = 4;
+                const colsPerPalette = parseInt(colorsPerPaletteInput.value);
+                for (let i = 0; i < imageDataHiAttrib.data.length / RGBA8888_SZ; i++) {
+                    // Strip palette offset from pixel data so the attribute will always be palette 0.
+                    // The palette data will be saved elsewhere and applied at runtime
+                    const srcPalOffset = (imageData.colorIndexes[i] % colsPerPalette) * RGBA8888_SZ;
+                    const destRGBAPixel = i * RGBA8888_SZ;
+                    // Palette colors are stored in BGRA8888 format
+                    quantizedImageDataHiAttrib.data[destRGBAPixel + 0] = imageData.paletteData[ srcPalOffset + 2]; // Red
+                    quantizedImageDataHiAttrib.data[destRGBAPixel + 1] = imageData.paletteData[ srcPalOffset + 1]; // Green
+                    quantizedImageDataHiAttrib.data[destRGBAPixel + 2] = imageData.paletteData[ srcPalOffset + 0]; // Blue
+                    quantizedImageDataHiAttrib.data[destRGBAPixel + 3] = 255; // Alpha, fully opaque
+                }
+                quantizedImageHiAttrib.width = imageDataHiAttrib.width;
+                quantizedImageHiAttrib.height = imageDataHiAttrib.height;
+                const ctx = quantizedImageHiAttrib.getContext("2d");
+                ctx.putImageData(quantizedImageDataHiAttrib, 0, 0);
+            }
+
+            // Prepare the PNG download
             if (imageData.totalPaletteColors > 256) {
                 quantizedImageDownload.href = quantizedImage.toDataURL();
             }
             else {
+                // Generate standard image first
+                pngExportSetHiAttribMode(false, parseInt(colorsPerPaletteInput.value, radix));
                 quantizedImageDownload.href = encodeIndexedPngToBase64(imageData.width, imageData.height, imageData.paletteData, totalPaletteColors, imageData.colorIndexes);
+                if (hiAttribEnabledInput.checked) {
+                    // Then palette stripped Hi-Attrib image
+                    pngExportSetHiAttribMode(hiAttribEnabledInput.checked, parseInt(colorsPerPaletteInput.value, radix));
+                    quantizedImageDownloadHiAttib.href = encodeIndexedPngToBase64(imageData.width, imageData.height, imageData.paletteData, totalPaletteColors, imageData.colorIndexes);
+                    quantizedImageDownloadHiAttibMap.href = encodeAttributeMapToBase64(parseInt(imageData.width), parseInt(imageData.height),
+                                                                                       parseInt(tileWidthInput.value), parseInt(tileHeightInput.value),
+                                                                                       imageData.colorIndexes, parseInt(colorsPerPaletteInput.value));
+                }
             }
         }
         else if (data.action === Action.UpdatePalettes) {

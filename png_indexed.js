@@ -59,6 +59,15 @@ const DEFLATE_HEADER_FINAL_YES = 1;    // BTYPE Uncompressed, final
 const DEFLATE_HEADER_SZ        = 5;    // 1 byte Is Final block, 2 bytes Length, 2 bytes 
 
 
+var HiAttribEnabled = false;
+var HiAttribNuMColorsPerPalette;
+
+export function pngExportSetHiAttribMode(modEnabled, palSize) {
+    HiAttribEnabled = modEnabled;
+    HiAttribNuMColorsPerPalette = palSize;
+}
+
+
 function uint8ToBase64(arr) {
     return btoa(Array(arr.length)
         .fill("")
@@ -199,7 +208,11 @@ function pngPrepareIndexedPixelData(width, height, colorIndexes) {
         let adler_start = zlibIdx;
         zlibPixelRows[zlibIdx++] = PNG_ROW_FILTER_TYPE_NONE;
         for (let x = 0; x < width; x++) {
-           zlibPixelRows[zlibIdx++] = colorIndexes[pixelSourceIdx++];
+
+            if (HiAttribEnabled)
+                zlibPixelRows[zlibIdx++] = colorIndexes[pixelSourceIdx++] % HiAttribNuMColorsPerPalette;
+            else
+                zlibPixelRows[zlibIdx++] = colorIndexes[pixelSourceIdx++];
         }
         adler_crc_update(zlibPixelRows.slice(adler_start, zlibIdx));
     }
@@ -275,4 +288,35 @@ export function encodeIndexedPngToBase64(width, height, paletteData, totalPalett
     pngBufIndex = pngWriteChunk(pngBuf, pngBufIndex, "IEND", new Uint8Array());
 
     return "data:image/png;base64," + uint8ToBase64(pngBuf);
+};
+
+
+
+// Maybe a companion source header file? 
+//  - mainly just need "tile height" to infer everything else...
+//    - maybe just support 8x1 mode? -> so no header is needed?
+
+// TODO: Move into hi_attrib.js
+//
+// Expects:
+// - colorIndexes: 1 byte per pixel
+export function encodeAttributeMapToBase64(width, height, tileWidth, tileHeight, colorIndexes, colorsPerPal) {
+
+    // Attribute buffer sized in tiles
+    const attribMap = new Uint8Array((width / tileWidth) * (height / tileHeight));
+
+    let tileY = 0;
+    for (let pixelY = 0; pixelY < height; pixelY += tileHeight) {
+        let tileX = 0;
+        for (let pixelX = 0; pixelX < width; pixelX += tileWidth) {
+            const pixelIndex = pixelX + (pixelY * width);
+            const mapIndex = tileX + (tileY * (width / tileWidth));
+            attribMap[mapIndex] = colorIndexes[pixelIndex] / colorsPerPal;
+            // console.log("Tile X, Y: " + tileX + "," + tileY + " | Pixel X, Y: " + pixelX + "," + pixelY + " | Color Index -> Pal: " + colorIndexes[pixelIndex] + "," + colorIndexes[pixelIndex] / colorsPerPal + " | pixelIndex, mapIndex: " + pixelIndex + "," +  mapIndex + " | Result ---> " + attribMap[mapIndex]);
+            tileX++;
+        }
+        tileY++;
+    }
+
+    return "data:application/octet-stream;base64," + uint8ToBase64(attribMap);
 };
