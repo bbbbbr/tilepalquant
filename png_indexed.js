@@ -166,15 +166,23 @@ function pngWriteChunk(output, index, type, payload) {
 function pngPreparePaletteData(paletteData, totalPaletteColors) {
 
     // Reformat palette to RGB888 from BGRA8888
+    totalPaletteColors = 2;
     const paletteDataRGB888 = new Uint8Array(totalPaletteColors * PNG_PAL_RGB888_SZ);
     let srcIdx = 0, dstIdx = 0;
-    while (srcIdx < (totalPaletteColors * PNG_PAL_RGB888_SZ)) {
-        paletteDataRGB888[srcIdx    ] = paletteData[dstIdx + 2];
-        paletteDataRGB888[srcIdx + 1] = paletteData[dstIdx + 1];
-        paletteDataRGB888[srcIdx + 2] = paletteData[dstIdx];
-        srcIdx += 3;
-        dstIdx += 4; // Discard every 4th source byte
-    }
+    // while (srcIdx < (totalPaletteColors * PNG_PAL_RGB888_SZ)) {
+    //     paletteDataRGB888[srcIdx    ] = paletteData[dstIdx + 2];
+    //     paletteDataRGB888[srcIdx + 1] = paletteData[dstIdx + 1];
+    //     paletteDataRGB888[srcIdx + 2] = paletteData[dstIdx];
+    //     srcIdx += 3;
+    //     dstIdx += 4; // Discard every 4th source byte
+    // }
+
+        paletteDataRGB888[0] = 0;
+        paletteDataRGB888[1] = 0;
+        paletteDataRGB888[2] = 0;
+        paletteDataRGB888[3] = 255;
+        paletteDataRGB888[4] = 255;
+        paletteDataRGB888[5] = 0;
 
     return paletteDataRGB888;
 }
@@ -183,7 +191,11 @@ function pngPrepareIndexedPixelData(width, height, colorIndexes) {
     // For Indexed Pixel data, encode each scanline row as a separate
     // zlib chunk which makes it easier to pack it all together.
     // Tuck the PNG row data into that
-    const deflate_chunk_sz  = PNG_ROW_FILTER_TYPE_SZ + width;
+    const bpp = 1;
+    const pixels_per_byte = 8 / bpp;    
+    const deflate_chunk_sz  = PNG_ROW_FILTER_TYPE_SZ + Math.trunc((width + (pixels_per_byte - 1)) / pixels_per_byte);  // Needs to be rounded up in case it's not an even multiple of pixels_per_byte
+//    console.log("width=" + width + ", pixels_per_byte=" + pixels_per_byte + ", result=" + Math.trunc((width + (pixels_per_byte - 1)) / pixels_per_byte));
+    // const deflate_chunk_sz  = PNG_ROW_FILTER_TYPE_SZ + width;
     const zlib_row_chunk_sz = DEFLATE_HEADER_SZ + deflate_chunk_sz;
     const zlib_total_size   = ZLIB_HEADER_SZ + (zlib_row_chunk_sz * height) + ZLIB_FOOTER_SZ;
 
@@ -207,12 +219,46 @@ function pngPrepareIndexedPixelData(width, height, colorIndexes) {
         // PNG Row filter header + row data
         let adler_start = zlibIdx;
         zlibPixelRows[zlibIdx++] = PNG_ROW_FILTER_TYPE_NONE;
+        let bitpacked = 0;
+        let last_x;
         for (let x = 0; x < width; x++) {
 
             if (HiAttribEnabled)
                 zlibPixelRows[zlibIdx++] = colorIndexes[pixelSourceIdx++] % HiAttribNuMColorsPerPalette;
-            else
-                zlibPixelRows[zlibIdx++] = colorIndexes[pixelSourceIdx++];
+            else {
+                // Spec:
+                // Pixels are always packed into scanlines with no wasted bits between pixels.
+                // Pixels smaller than a byte never cross byte boundaries; they are packed into bytes
+                // **with the leftmost pixel in the high-order bits of a byte**, the rightmost in the low-order bits.
+
+                // TEST OUTPUT: Make an 8x8 tile size checkerboard
+                    let col = 0x00;
+                    if (x & 0x08) col = 0x01;
+                    if (y & 0x08) col = col ^ 0x01;
+                    bitpacked |= col;
+
+// bitpacked |= (colorIndexes[pixelSourceIdx++] & 0x80);
+                // Write out packed bits if this is the last bit in the byte
+                if ((x % 8) === 7) {
+                    zlibPixelRows[zlibIdx++] = bitpacked & 0xFF;
+                }
+                // Rotate bits upward
+                bitpacked = (bitpacked << 1) & 0xFF;
+            }
+            last_x = x;
+        }
+        // If there trailing bits that need to be flushed then write them out
+        // (i.e, image width isn't a multiple of 8 and so a row won't end on full bit)
+        if ((last_x % 8) !== 7) {
+            // Spec:
+            // Scanlines always begin on byte boundaries.
+            // When pixels have fewer than 8 bits and the scanline width
+            // is not evenly divisible by the number of pixels per byte, the low-order bits in the last byte of each scanline are wasted.
+            // The contents of these wasted bits are unspecified. 
+
+            // Upshift so that unused bits are in low order bits
+            bitpacked = (bitpacked << (7 - (last_x % 8))) & 0xFF;
+            zlibPixelRows[zlibIdx++] = bitpacked & 0xFF;
         }
         adler_crc_update(zlibPixelRows.slice(adler_start, zlibIdx));
     }
@@ -271,7 +317,7 @@ export function encodeIndexedPngToBase64(width, height, paletteData, totalPalett
     const ihdr = new Uint8Array(13);
     write32Be(ihdr, 0, width);
     write32Be(ihdr, 4, height);  
-    ihdr[8]  = PNG_BIT_DEPTH_8;
+    ihdr[8]  = 1; // PNG_BIT_DEPTH_8;
     ihdr[9]  = PNG_COLOR_TYPE_INDEXED;
     ihdr[10] = PNG_COMPRESSION_METHOD_DEFLATE_NONE;
     ihdr[11] = PNG_FILTER_METHOD_NONE;
