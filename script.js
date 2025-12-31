@@ -266,12 +266,14 @@ quantizeButton.addEventListener("click", () => {
             }
             else {
                 // Generate standard image first
+                let bpp = 1;
                 pngExportSetHiAttribMode(false, parseInt(colorsPerPaletteInput.value, radix));
-                quantizedImageDownload.href = encodeIndexedPngToBase64(imageData.width, imageData.height, imageData.paletteData, totalPaletteColors, imageData.colorIndexes);
+                quantizedImageDownload.href = encodeIndexedPngToBase64(imageData.width, imageData.height, imageData.paletteData, totalPaletteColors, imageData.colorIndexes, bpp);
                 if (hiAttribEnabledInput.checked) {
-                    // Then palette stripped Hi-Attrib image
+                    // Then palette stripped Hi-Attrib image. Always use 8bpp for this mode
+                    let bpp = 8;
                     pngExportSetHiAttribMode(hiAttribEnabledInput.checked, parseInt(colorsPerPaletteInput.value, radix));
-                    quantizedImageDownloadHiAttib.href = encodeIndexedPngToBase64(imageData.width, imageData.height, imageData.paletteData, totalPaletteColors, imageData.colorIndexes);
+                    quantizedImageDownloadHiAttib.href = encodeIndexedPngToBase64(imageData.width, imageData.height, imageData.paletteData, totalPaletteColors, imageData.colorIndexes, bpp);
                     quantizedImageDownloadHiAttibMap.href = encodeAttributeMapToBase64(parseInt(imageData.width), parseInt(imageData.height),
                                                                                        parseInt(tileWidthInput.value), parseInt(tileHeightInput.value),
                                                                                        imageData.colorIndexes, parseInt(colorsPerPaletteInput.value));

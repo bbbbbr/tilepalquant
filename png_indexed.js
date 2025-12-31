@@ -56,7 +56,7 @@ const ZLIB_HEADER_FLG          = 0x01; // FLG: Flags: FCHECK, No DICT, FLEVEL = 
 
 const DEFLATE_HEADER_FINAL_NO  = 0;    // BTYPE Uncompressed, not final
 const DEFLATE_HEADER_FINAL_YES = 1;    // BTYPE Uncompressed, final
-const DEFLATE_HEADER_SZ        = 5;    // 1 byte Is Final block, 2 bytes Length, 2 bytes 
+const DEFLATE_HEADER_SZ        = 5;    // 1 byte Is Final block, 2 bytes Length, 2 bytes
 
 
 var HiAttribEnabled = false;
@@ -139,7 +139,7 @@ function crc32(buffer) {
 }
 
 
-function pngWriteChunk(output, index, type, payload) {  
+function pngWriteChunk(output, index, type, payload) {
 
     // Write the Length of Payload (does not include length, type, checksum)
     write32Be(output, index, payload.length);
@@ -163,44 +163,42 @@ function pngWriteChunk(output, index, type, payload) {
 
     return index;
 }
-function pngPreparePaletteData(paletteData, totalPaletteColors) {
+function pngPreparePaletteData(paletteData, totalPaletteColors, bpp) {
 
     // Reformat palette to RGB888 from BGRA8888
-    totalPaletteColors = 2;
-    const paletteDataRGB888 = new Uint8Array(totalPaletteColors * PNG_PAL_RGB888_SZ);
+    let exportedPaletteColors = totalPaletteColors;
+    const bppPaletteLimit = (1 << bpp);
+    if (exportedPaletteColors > bppPaletteLimit) {
+        // console.log("Warning, truncating palette from " + totalPaletteColors + " to " + bppPaletteLimit + " colors" + " -> bpp = " + bpp);
+        exportedPaletteColors = bppPaletteLimit;
+    }
+
+    const paletteDataRGB888 = new Uint8Array(exportedPaletteColors * PNG_PAL_RGB888_SZ);
     let srcIdx = 0, dstIdx = 0;
-    // while (srcIdx < (totalPaletteColors * PNG_PAL_RGB888_SZ)) {
-    //     paletteDataRGB888[srcIdx    ] = paletteData[dstIdx + 2];
-    //     paletteDataRGB888[srcIdx + 1] = paletteData[dstIdx + 1];
-    //     paletteDataRGB888[srcIdx + 2] = paletteData[dstIdx];
-    //     srcIdx += 3;
-    //     dstIdx += 4; // Discard every 4th source byte
-    // }
-
-        paletteDataRGB888[0] = 0;
-        paletteDataRGB888[1] = 0;
-        paletteDataRGB888[2] = 0;
-        paletteDataRGB888[3] = 255;
-        paletteDataRGB888[4] = 255;
-        paletteDataRGB888[5] = 0;
-
+    while (srcIdx < (exportedPaletteColors * PNG_PAL_RGB888_SZ)) {
+        paletteDataRGB888[srcIdx    ] = paletteData[dstIdx + 2];
+        paletteDataRGB888[srcIdx + 1] = paletteData[dstIdx + 1];
+        paletteDataRGB888[srcIdx + 2] = paletteData[dstIdx];
+        srcIdx += 3;
+        dstIdx += 4; // Discard every 4th source byte
+    }
     return paletteDataRGB888;
 }
-function pngPrepareIndexedPixelData(width, height, colorIndexes) {
+function pngPrepareIndexedPixelData(width, height, colorIndexes, bpp) {
 
     // For Indexed Pixel data, encode each scanline row as a separate
     // zlib chunk which makes it easier to pack it all together.
     // Tuck the PNG row data into that
-    const bpp = 1;
-    const pixels_per_byte = 8 / bpp;    
+    const bppMaxIndexValueAndMask  = ((1 << bpp) - 1);
+    const pixels_per_byte = 8 / bpp;
+    const lastXinPackedByte = pixels_per_byte - 1;
+
     const deflate_chunk_sz  = PNG_ROW_FILTER_TYPE_SZ + Math.trunc((width + (pixels_per_byte - 1)) / pixels_per_byte);  // Needs to be rounded up in case it's not an even multiple of pixels_per_byte
-//    console.log("width=" + width + ", pixels_per_byte=" + pixels_per_byte + ", result=" + Math.trunc((width + (pixels_per_byte - 1)) / pixels_per_byte));
-    // const deflate_chunk_sz  = PNG_ROW_FILTER_TYPE_SZ + width;
     const zlib_row_chunk_sz = DEFLATE_HEADER_SZ + deflate_chunk_sz;
     const zlib_total_size   = ZLIB_HEADER_SZ + (zlib_row_chunk_sz * height) + ZLIB_FOOTER_SZ;
 
-    // zlib/Deflate Adler checksum is only on the 
-    // Size of block in little endian and its 1's complement (4 bytes) 
+    // zlib/Deflate Adler checksum is only on the
+    // Size of block in little endian and its 1's complement (4 bytes)
     adler_reset();
     const zlibPixelRows = new Uint8Array(zlib_total_size);
     let zlibIdx = 0;
@@ -219,47 +217,59 @@ function pngPrepareIndexedPixelData(width, height, colorIndexes) {
         // PNG Row filter header + row data
         let adler_start = zlibIdx;
         zlibPixelRows[zlibIdx++] = PNG_ROW_FILTER_TYPE_NONE;
-        let bitpacked = 0;
-        let last_x;
-        for (let x = 0; x < width; x++) {
 
-            if (HiAttribEnabled)
+        let last_x, nextPixelIndex;
+        let bitpacked = 0;
+
+        if (HiAttribEnabled) {
+            for (let x = 0; x < width; x++) {
                 zlibPixelRows[zlibIdx++] = colorIndexes[pixelSourceIdx++] % HiAttribNuMColorsPerPalette;
-            else {
+            }
+        }
+        else {
+            // Non-HiAttrib version
+            for (let x = 0; x < width; x++) {
                 // Spec:
                 // Pixels are always packed into scanlines with no wasted bits between pixels.
                 // Pixels smaller than a byte never cross byte boundaries; they are packed into bytes
                 // **with the leftmost pixel in the high-order bits of a byte**, the rightmost in the low-order bits.
 
-                // TEST OUTPUT: Make an 8x8 tile size checkerboard
-                    let col = 0x00;
-                    if (x & 0x08) col = 0x01;
-                    if (y & 0x08) col = col ^ 0x01;
-                    bitpacked |= col;
+                // TEST OUTPUT: Make an 8x8 checkboard like arrangement of the bpp sized palette
+                // let nextPixelIndex = ((Math.trunc(y / 8) % (1 << bpp)) + Math.trunc(x / 8)) % (1 << bpp);
 
-// bitpacked |= (colorIndexes[pixelSourceIdx++] & 0x80);
+                // Read next pixel color index and clamp (via mask, dropping bits) the pixel to max bpp allowed value
+                let nextPixelIndex = colorIndexes[pixelSourceIdx++] & bppMaxIndexValueAndMask;
+                // if (colorIndexes[pixelSourceIdx++] > bppMaxIndexValueAndMask) nextPixelIndex = bppMaxIndexValueAndMask;
+                bitpacked |= nextPixelIndex; //  OLD TEST: (colorIndexes[pixelSourceIdx++] & 0x80);
+
                 // Write out packed bits if this is the last bit in the byte
-                if ((x % 8) === 7) {
+                if ((x % pixels_per_byte) === lastXinPackedByte) {
                     zlibPixelRows[zlibIdx++] = bitpacked & 0xFF;
                 }
-                // Rotate bits upward
-                bitpacked = (bitpacked << 1) & 0xFF;
-            }
-            last_x = x;
-        }
-        // If there trailing bits that need to be flushed then write them out
-        // (i.e, image width isn't a multiple of 8 and so a row won't end on full bit)
-        if ((last_x % 8) !== 7) {
-            // Spec:
-            // Scanlines always begin on byte boundaries.
-            // When pixels have fewer than 8 bits and the scanline width
-            // is not evenly divisible by the number of pixels per byte, the low-order bits in the last byte of each scanline are wasted.
-            // The contents of these wasted bits are unspecified. 
+                // Rotate bits upward (for 8bpp this is don't care since it's all replaced next iteration)
+                bitpacked = (bitpacked << bpp) & 0xFF;
 
-            // Upshift so that unused bits are in low order bits
-            bitpacked = (bitpacked << (7 - (last_x % 8))) & 0xFF;
-            zlibPixelRows[zlibIdx++] = bitpacked & 0xFF;
+
+                // Save X for trailing write test if needed (see immediately below)
+                last_x = x;
+            }
+            // If there trailing bits that need to be flushed then write them out
+            // (i.e, image width isn't a multiple of 8 and so a row won't end on full bit)
+            // Doesn't apply for 8bpp since that always writes a full byte per pixel
+            if ((bpp !== 8) && ((last_x % pixels_per_byte) !== lastXinPackedByte)) {
+                // Spec:
+                // Scanlines always begin on byte boundaries.
+                // When pixels have fewer than 8 bits and the scanline width
+                // is not evenly divisible by the number of pixels per byte, the low-order bits in the last byte of each scanline are wasted.
+                // The contents of these wasted bits are unspecified.
+
+                // Upshift so that unused bits are in low order bits
+                bitpacked = (bitpacked << ((lastXinPackedByte - (last_x % pixels_per_byte)) * bpp)) & 0xFF;
+                zlibPixelRows[zlibIdx++] = bitpacked & 0xFF;
+            }
         }
+
+
         adler_crc_update(zlibPixelRows.slice(adler_start, zlibIdx));
     }
     // Write zlib Adler crc
@@ -274,7 +284,7 @@ function pngPrepareIndexedPixelData(width, height, colorIndexes) {
 // - paletteData:  BGRA8888 (4 bytes, alpha gets discarded), 256 colors max
 //                 (See function addExportIndexedColors() for indexed export palette packing)
 // - colorIndexes: 1 byte per pixel
-export function encodeIndexedPngToBase64(width, height, paletteData, totalPaletteColors, colorIndexes) {
+export function encodeIndexedPngToBase64(width, height, paletteData, totalPaletteColors, colorIndexes, bpp) {
 
     if (!paletteData || !ArrayBuffer.isView(paletteData) || (paletteData.length % PNG_PAL_RGBA8888_SZ) !== 0)
         throw new Error("Palette entries must RGBA8888 (4 bytes per color) byte view");
@@ -288,12 +298,14 @@ export function encodeIndexedPngToBase64(width, height, paletteData, totalPalett
     if (width > PNG_EXPORT_SUPPORTED_MAX_WIDTH)
         throw new Error("Image is wider than maximum supported width of " + PNG_EXPORT_SUPPORTED_MAX_WIDTH);
 
+    if ((bpp !== 1) && (bpp !== 2) && (bpp !== 4) && (bpp !== 8))
+        throw new Error("Error: Bits-per-pixel (bpp) must be 1, 2, 4 or 8. Input was " + bpp);
 
     // == Prepare Palettes and Indexed Pixel Data into suitable PNG format ==
 
     // Reformat palette to RGB888 from BGRA8888
-    const paletteDataRGB888 = pngPreparePaletteData(paletteData, totalPaletteColors);
-    const zlibPixelRows     = pngPrepareIndexedPixelData(width, height, colorIndexes);
+    const paletteDataRGB888 = pngPreparePaletteData(paletteData, totalPaletteColors, bpp);
+    const zlibPixelRows     = pngPrepareIndexedPixelData(width, height, colorIndexes, bpp);
 
 
     // == Now build the PNG output ==
@@ -316,8 +328,8 @@ export function encodeIndexedPngToBase64(width, height, paletteData, totalPalett
     // PNG IHDR
     const ihdr = new Uint8Array(13);
     write32Be(ihdr, 0, width);
-    write32Be(ihdr, 4, height);  
-    ihdr[8]  = 1; // PNG_BIT_DEPTH_8;
+    write32Be(ihdr, 4, height);
+    ihdr[8]  = bpp; // PNG_BIT_DEPTH_8;
     ihdr[9]  = PNG_COLOR_TYPE_INDEXED;
     ihdr[10] = PNG_COMPRESSION_METHOD_DEFLATE_NONE;
     ihdr[11] = PNG_FILTER_METHOD_NONE;
@@ -338,7 +350,7 @@ export function encodeIndexedPngToBase64(width, height, paletteData, totalPalett
 
 
 
-// Maybe a companion source header file? 
+// Maybe a companion source header file?
 //  - mainly just need "tile height" to infer everything else...
 //    - maybe just support 8x1 mode? -> so no header is needed?
 
