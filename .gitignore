@@ -1,0 +1,9 @@
+notes.txt
+*.o
+gbtoolsid
+gbtoolsid.exe
+bin/
+obj
+calc
+test/output
+test_norepo
