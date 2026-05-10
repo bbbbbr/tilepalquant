@@ -10,6 +10,8 @@
 #include "options.h"
 
 
+#define RAND_SEED_DEFAULT        0
+
 #define ARG_SKIP_NONE            0
 #define ARG_AT_INPUT_FILENAME    1
 #define ARG_AFTER_INPUT_FILENAME 2
@@ -18,9 +20,10 @@ using namespace std;
 
 
 static string str_remove_path(string str_in);
-static void   logArgs(int startIndex, int argc, const char* argv[], quantOptions * options);
 static void   initArgs(quantOptions * options);
 static void   showHelp(void);
+static void   checkLogRandArgs(quantOptions * options);
+static void   logArgs(int startIndex, int argc, const char* argv[], quantOptions * options);
 static int    processArgs(int startIndex, int argc, const char* argv[], quantOptions * options);
 static int    handleMetaFileArgs(quantOptions * options);
 
@@ -62,17 +65,20 @@ static void initArgs(quantOptions * options) {
     // Options unique to the console port
     options->argsForLoggingToOutput = "";
     
+    options->randomSeed = RAND_SEED_DEFAULT;
+
     options->use_metafile = false;
 }
 
 
-void showHelp(void) {
+static void showHelp(void) {
     printf(
         "tilepalquant: console port of rilden's js tiledpalettequant\n"
         "              see https://github.com/rilden/tiledpalettequant\n"
         "\n"
         "usage: tilepalquant <file>.png [options]\n"
-        "-o <filename>         Ouput file (if not used then default is <png file>_out.png)\n"       
+        "-o <filename>         Ouput file (if not used then default is <png file>_out.png)\n"
+        "-h                    Show this help output)\n"
         "-tile_w <width>       Width  of tiles in pixels (default: 8)\n"
         "-tile_h <height>      Height of tiles in pixels (default: 8)\n"
         "-num_pals <num>       Number of palettes (default: 8)\n"
@@ -89,12 +95,34 @@ void showHelp(void) {
         "                        (diag4, horiz4, vert4, diag2, horiz2, vert2)\n"
         "-dither_wt <num>     Dither weight (range: TODO) (default: 0.5)\n"
         "-use_metafile        Read extra options from file <inputfile>.meta (file missing not an error)\n"
+        "-rand_seed <num>     Specify random number seed for conversion (default: 0 TODO)\n"
+        "-rand_on             Use a random value for conversion instead of fixed seed,\n"
+        "                         meaning output may not be the same each time\n"
+        "\n"
     );
         
         // rgbColor colorZeroValue; // TODO: = hexToColor(colorInput.value);
         // rgbColor sharedColor;  // specify -shared_col
         // rgbColor transparentColor;  -transp_col
         
+}
+
+
+// If random number seed generation was turned on then 
+// log the generated number to the argument output as an argument
+static void checkLogRandArgs(quantOptions * options) {
+    if (options->randomSeed != RAND_SEED_DEFAULT) {
+        // "-rand_seed " + options->randomSeed
+        // Build argv style array
+        string rand_arg_str = "-rand_seed " + std::to_string(options->randomSeed);
+        int rand_argc = 1;
+        static std::vector<char const*> rand_argv;
+        rand_argv.clear();
+        rand_argv.reserve(rand_argc + 1); // +1 for null terminator entry (optional with our usage)
+        rand_argv.push_back(rand_arg_str.c_str());
+        rand_argv.push_back(nullptr);
+        logArgs(ARG_SKIP_NONE, rand_argc, rand_argv.data(), options);
+    }
 }
 
 
@@ -192,6 +220,15 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
             options->use_metafile = true;
         }        
 
+        else if(!strcmp(argv[i], "-rand_seed")) {
+            options->randomSeed = atof(argv[++i]);
+        }
+
+        else if(!strcmp(argv[i], "-rand_on")) {
+            srand (time(NULL));
+            options->randomSeed = rand() % 32000;
+        }
+
         else {
             printf("Warning: Argument \"%s\" not recognized\n", argv[i]);
         }
@@ -254,6 +291,14 @@ int processArgs(int argc, char* argv[], quantOptions * options) {
         return EXIT_SUCCESS;
     }
 
+    if (!strcmp(argv[ARG_AT_INPUT_FILENAME], "-h")) {
+        showHelp();
+    }
+    else if (argv[ARG_AT_INPUT_FILENAME][0] == '-') {
+        printf("Error: input filename looks like an option instead of a filename (\"%s\")\n", argv[ARG_AT_INPUT_FILENAME]);
+        return EXIT_FAILURE;
+    }
+
     //default params
     options->sourceImageFilename = argv[ARG_AT_INPUT_FILENAME];
     options->outputImageFilename = argv[ARG_AT_INPUT_FILENAME];
@@ -272,6 +317,9 @@ int processArgs(int argc, char* argv[], quantOptions * options) {
     options->totalPaletteColors    = options->numPalettes * options->colorsPerPalette;
     options->outputLogArgsFilename = options->outputImageFilename + ".convert_args.txt";
     
+    checkLogRandArgs(options);
+    // printf("-->args: %s\n", options->argsForLoggingToOutput.c_str());
+
     // TODO:
     //     if (totalPaletteColors > 256) {  -> Emit png in RGB instead Indexed
     

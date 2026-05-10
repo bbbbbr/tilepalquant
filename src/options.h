@@ -70,6 +70,8 @@ struct quantOptions {
     string   argsForLoggingToOutput;
     string   outputLogArgsFilename;
     
+    int      randomSeed;
+
     bool     use_metafile;
 };
 
