@@ -1,3 +1,6 @@
+/*
+ // TODO: these should all now be handled in options.h
+ 
 // make sure these enums are syncronized with the ones in worker.ts
 export var Action;
 (function (Action) {
@@ -30,3 +33,4 @@ export var DitherPattern;
     DitherPattern[DitherPattern["Vertical2"] = 5] = "Vertical2";
 })(DitherPattern || (DitherPattern = {}));
 //# sourceMappingURL=enums.js.map
+*/

@@ -1,3 +1,5 @@
+/*
+
 "use strict";
 // we can't import these enums from enums.js, because worker modules are not supported in Firefox
 var Action;
@@ -1241,3 +1243,5 @@ function minIndex(values) {
     return minI;
 }
 //# sourceMappingURL=worker.js.map
+// 
+*/
