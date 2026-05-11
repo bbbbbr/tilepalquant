@@ -8,6 +8,18 @@ using namespace std;
 // TODO: Implement rgbColor
 #define rgbColor int
 
+#define RAND_SEED_DEFAULT        0
+
+#define ARG_SKIP_NONE            0
+#define ARG_AT_INPUT_FILENAME    1
+#define ARG_AFTER_INPUT_FILENAME 2
+
+#define DITHER_PIXELS_4      4
+#define DITHER_PIXELS_2      2
+#define DITHER_WIDTH         2
+#define DITHER_HEIGHT        2
+#define DITHER_PATTERN_AR_SZ (DITHER_WIDTH * DITHER_HEIGHT)
+
 // TODO: CAPS_CAPS?
 //
 struct Opts
@@ -40,6 +52,9 @@ struct Opts
         ditherDiagonal2,
         ditherHorizontal2,
         ditherVertical2,
+
+        ditherPatternsMax = ditherVertical2,
+        ditherPatternsCount
     };
 };
 
@@ -60,7 +75,9 @@ struct quantOptions {
 
 
     int      ditherMethod;
-    int      ditherPattern;
+    int      ditherPatternType;
+    int      ditherPixels;
+    uint8_t  ditherPattern[DITHER_WIDTH][DITHER_HEIGHT];
     float    ditherWeight;
 
     int      totalPaletteColors; // TODO: derived from numPalettes * colorsPerPalette
@@ -76,14 +93,12 @@ struct quantOptions {
     int      randomSeed;
 
     bool     use_metafile;
+
+    bool     verbose;
 };
 
-#define RAND_SEED_DEFAULT        0
 
-#define ARG_SKIP_NONE            0
-#define ARG_AT_INPUT_FILENAME    1
-#define ARG_AFTER_INPUT_FILENAME 2
-
+// Option defaults
 #define TILE_WIDTH_DEFAULT         8
 #define TILE_HEIGHT_DEFAULT        8
 #define NUM_PALETTES_DEFAULT       8
@@ -100,8 +115,4 @@ struct quantOptions {
 #define DITHER_WEIGHT_DEFAULT         0.50
 
 int processArgs(int argc, char* argv[], quantOptions * options);
-
-
-
-
 

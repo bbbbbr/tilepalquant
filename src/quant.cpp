@@ -1,77 +1,5 @@
 /*
 
-"use strict";
-// we can't import these enums from enums.js, because worker modules are not supported in Firefox
-var Action;
-(function (Action) {
-    Action[Action["StartQuantization"] = 0] = "StartQuantization";
-    Action[Action["UpdateProgress"] = 1] = "UpdateProgress";
-    Action[Action["UpdateQuantizedImage"] = 2] = "UpdateQuantizedImage";
-    Action[Action["UpdatePalettes"] = 3] = "UpdatePalettes";
-    Action[Action["DoneQuantization"] = 4] = "DoneQuantization";
-})(Action || (Action = {}));
-var ColorZeroBehaviour;
-(function (ColorZeroBehaviour) {
-    ColorZeroBehaviour[ColorZeroBehaviour["Unique"] = 0] = "Unique";
-    ColorZeroBehaviour[ColorZeroBehaviour["Shared"] = 1] = "Shared";
-    ColorZeroBehaviour[ColorZeroBehaviour["TransparentFromTransparent"] = 2] = "TransparentFromTransparent";
-    ColorZeroBehaviour[ColorZeroBehaviour["TransparentFromColor"] = 3] = "TransparentFromColor";
-})(ColorZeroBehaviour || (ColorZeroBehaviour = {}));
-var Dither;
-(function (Dither) {
-    Dither[Dither["Off"] = 0] = "Off";
-    Dither[Dither["Fast"] = 1] = "Fast";
-    Dither[Dither["Slow"] = 2] = "Slow";
-})(Dither || (Dither = {}));
-var DitherPattern;
-(function (DitherPattern) {
-    DitherPattern[DitherPattern["Diagonal4"] = 0] = "Diagonal4";
-    DitherPattern[DitherPattern["Horizontal4"] = 1] = "Horizontal4";
-    DitherPattern[DitherPattern["Vertical4"] = 2] = "Vertical4";
-    DitherPattern[DitherPattern["Diagonal2"] = 3] = "Diagonal2";
-    DitherPattern[DitherPattern["Horizontal2"] = 4] = "Horizontal2";
-    DitherPattern[DitherPattern["Vertical2"] = 5] = "Vertical2";
-})(DitherPattern || (DitherPattern = {}));
-const ditherPatterns = new Map();
-ditherPatterns.set(DitherPattern.Diagonal4, [
-    [0, 2],
-    [3, 1],
-]);
-ditherPatterns.set(DitherPattern.Horizontal4, [
-    [0, 3],
-    [1, 2],
-]);
-ditherPatterns.set(DitherPattern.Vertical4, [
-    [0, 1],
-    [3, 2],
-]);
-ditherPatterns.set(DitherPattern.Diagonal2, [
-    [0, 1],
-    [1, 0],
-]);
-ditherPatterns.set(DitherPattern.Horizontal2, [
-    [0, 1],
-    [0, 1],
-]);
-ditherPatterns.set(DitherPattern.Vertical2, [
-    [0, 0],
-    [1, 1],
-]);
-let ditherPattern = ditherPatterns.get(DitherPattern.Diagonal4);
-let ditherPixels = 4;
-let quantizationOptions = {
-    tileWidth: 8,
-    tileHeight: 8,
-    numPalettes: 8,
-    colorsPerPalette: 4,
-    bitsPerChannel: 5,
-    fractionOfPixels: 0.1,
-    colorZeroBehaviour: ColorZeroBehaviour.Unique,
-    colorZeroValue: [0, 0, 0],
-    dither: Dither.Off,
-    ditherWeight: 0.5,
-    ditherPattern: DitherPattern.Diagonal4,
-};
 onmessage = function (event) {
     updateProgress(0);
     const data = event.data;
@@ -89,12 +17,7 @@ onmessage = function (event) {
     updateProgress(100);
     postMessage({ action: Action.DoneQuantization });
 };
-function updateProgress(progress) {
-    postMessage({ action: Action.UpdateProgress, progress: progress });
-}
-function updateQuantizedImage(image) {
-    postMessage({ action: Action.UpdateQuantizedImage, imageData: image });
-}
+
 function updatePalettes(palettes, doSorting) {
     let pal = structuredClone(palettes);
     const colorZeroBehaviour = quantizationOptions.colorZeroBehaviour;
@@ -1243,5 +1166,5 @@ function minIndex(values) {
     return minI;
 }
 //# sourceMappingURL=worker.js.map
-// 
+//
 */

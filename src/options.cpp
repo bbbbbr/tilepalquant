@@ -12,6 +12,26 @@
 using namespace std;
 
 
+// Order should match: Opts::ditherPatternValues
+const uint8_t ditherPatterns[Opts::ditherPatternsCount][DITHER_WIDTH][DITHER_HEIGHT] = {
+    {{0, 2}, {3, 1}},     // Diagonal4
+    {{0, 3}, {1, 2}},     // Horizontal4
+    {{0, 1}, {3, 2}},     // Vertical4
+    {{0, 1}, {1, 0}},     // Diagonal2
+    {{0, 1}, {0, 1}},     // Horizontal2
+    {{0, 0}, {1, 1}}      // Vertical2
+ };
+
+const uint8_t ditherPixelsSz[Opts::ditherPatternsCount] = {
+    DITHER_PIXELS_4, // Diagonal4
+    DITHER_PIXELS_4, // Horizontal4
+    DITHER_PIXELS_4, // Vertical4
+    DITHER_PIXELS_2, // Diagonal2
+    DITHER_PIXELS_2, // Horizontal2
+    DITHER_PIXELS_2  // Vertical2
+ };
+
+
 static string str_remove_path(string str_in);
 static void   initArgs(quantOptions * options);
 static void   showHelp(void);
@@ -52,13 +72,14 @@ static void initArgs(quantOptions * options) {
     // options->transparentColorRGB = TRANSPARENT_COLOR_RGB_DEFAULT;
 
     options->ditherMethod            = DITHER_METHOD_DEFAULT;
-    options->ditherPattern           = DITHER_PATTERN_DEFAULT;
+    options->ditherPatternType       = DITHER_PATTERN_DEFAULT;
     options->ditherWeight            = DITHER_WEIGHT_DEFAULT;
 
     // Options unique to the console port
     options->argsForLoggingToOutput  = "";
     options->randomSeed              = RAND_SEED_DEFAULT;
     options->use_metafile            = false;
+    options->verbose                 = false;
 }
 
 
@@ -69,7 +90,8 @@ static void showHelp(void) {
         "\n"
         "usage: tilepalquant <file>.png [options]\n"
         "-o <filename>         Ouput file (if not used then default is <png file>_out.png)\n"
-        "-h                    Show this help output)\n"
+        "-h                    Show this help output\n"
+        "-v                    Verbose output\n"
         "-tile_w <width>       Width  of tiles in pixels (default: 8)\n"
         "-tile_h <height>      Height of tiles in pixels (default: 8)\n"
         "-num_pals <num>       Number of palettes (default: 8)\n"
@@ -131,7 +153,13 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
     //Parse argv
     for (int i = startIndex; i < argc; ++i)
     {
-        if (!strcmp(argv[i], "-o")) {
+        if (!strcmp(argv[i], "-h")) {
+            showHelp();
+        }
+        else if (!strcmp(argv[i], "-v")) {
+            options->verbose = true;
+        }
+        else if (!strcmp(argv[i], "-o")) {
             if ((i + 1) >= argc) {
                 printf("Error: -o requires a filename, none specified\n");
                 return EXIT_FAILURE;
@@ -191,12 +219,12 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
 
         else if(!strcmp(argv[i], "-dither_pat")) {
             std::string mode_str = argv[++i];
-            if      (mode_str == "diag4")  options->ditherPattern = Opts::ditherDiagonal4;
-            else if (mode_str == "horiz4") options->ditherPattern = Opts::ditherHorizontal4;
-            else if (mode_str == "vert4")  options->ditherPattern = Opts::ditherVertical4;
-            else if (mode_str == "diag2")  options->ditherPattern = Opts::ditherDiagonal2;
-            else if (mode_str == "horiz2") options->ditherPattern = Opts::ditherHorizontal2;
-            else if (mode_str == "vert2")  options->ditherPattern = Opts::ditherVertical2;
+            if      (mode_str == "diag4")  options->ditherPatternType = Opts::ditherDiagonal4;
+            else if (mode_str == "horiz4") options->ditherPatternType = Opts::ditherHorizontal4;
+            else if (mode_str == "vert4")  options->ditherPatternType = Opts::ditherVertical4;
+            else if (mode_str == "diag2")  options->ditherPatternType = Opts::ditherDiagonal2;
+            else if (mode_str == "horiz2") options->ditherPatternType = Opts::ditherHorizontal2;
+            else if (mode_str == "vert2")  options->ditherPatternType = Opts::ditherVertical2;
             else {
                 printf("-dither_pat must be one of: diag4, horiz4, vert4, diag2, horiz2, vert2\n");
                 return EXIT_FAILURE;
@@ -304,12 +332,20 @@ int processArgs(int argc, char* argv[], quantOptions * options) {
         return EXIT_FAILURE;
     }
 
-    // Finalize remaining options
+
+    // Finalize some values based on options
     options->totalPaletteColors    = options->numPalettes * options->colorsPerPalette;
     options->outputLogArgsFilename = options->outputImageFilename + ".convert_args.txt";
 
+    // TODO: ditherPattern is used like so:
+    /// const index = ditherPattern[pixel.x & 1][pixel.y & 1];
+    memcpy(options->ditherPattern, ditherPatterns[options->ditherPatternType], DITHER_PATTERN_AR_SZ);
+    options->ditherPixels = ditherPixelsSz[options->ditherPatternType];
+
     checkLogRandArgs(options);
-    // printf("-->args: %s\n", options->argsForLoggingToOutput.c_str());
+    if (options->verbose) {
+        printf("Arguments: %s\n", options->argsForLoggingToOutput.c_str());
+    }
 
     // TODO:
     //     if (totalPaletteColors > 256) {  -> Emit png in RGB instead Indexed

@@ -40,9 +40,11 @@ int loadImageRGBAFromPNG(quantOptions * options, Image * sourceImageRGBA) {
             //     for(unsigned int x = 0; x < sourceImageRGBA.w; x += sourceImageRGBA.tile_w * sx)
                 // {
 
-    printf("Loaded %s: Image size %d x %d, tile size %d x %d\n",
-            options->sourceImageFilename.c_str(),
-            sourceImageRGBA->width, sourceImageRGBA->height, options->tileWidth, options->tileHeight);
+    if (options->verbose) {
+        printf("Loaded %s: Image size %d x %d, tile size %d x %d\n",
+                options->sourceImageFilename.c_str(),
+                sourceImageRGBA->width, sourceImageRGBA->height, options->tileWidth, options->tileHeight);
+    }
 
     return EXIT_SUCCESS;
 }
