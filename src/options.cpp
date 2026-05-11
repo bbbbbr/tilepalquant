@@ -9,13 +9,6 @@
 
 #include "options.h"
 
-
-#define RAND_SEED_DEFAULT        0
-
-#define ARG_SKIP_NONE            0
-#define ARG_AT_INPUT_FILENAME    1
-#define ARG_AFTER_INPUT_FILENAME 2
-
 using namespace std;
 
 
@@ -45,29 +38,27 @@ static string str_remove_path(string str_in) {
 static void initArgs(quantOptions * options) {
 
     //default values for some params
-    options->tileWidth        = 8; // TODO: ? #defines or CONSTS?
-    options->tileHeight       = 8;
-    options->numPalettes      = 8;
-    options->colorsPerPalette = 4;
-    options->bitsPerChannel   = 5;
-    
-    options->fractionOfPixels = 0.50;
-    
-    options->colorZeroBehaviour = Opts::indexZeroUnique;
-    // options->colorZeroRGB; // TODO: = hexToColor(colorInput.value); RGB(0,0,0)
-    // options->sharedColorRGB;
-    // options->transparentColorRGB;
-        
-    options->ditherMethod = Opts::ditherOff;
-    options->ditherPattern = Opts::ditherDiagonal4;
-    options->ditherWeight  = 0.50;
-       
-    // Options unique to the console port
-    options->argsForLoggingToOutput = "";
-    
-    options->randomSeed = RAND_SEED_DEFAULT;
+    options->tileWidth        = TILE_WIDTH_DEFAULT;
+    options->tileHeight       = TILE_HEIGHT_DEFAULT;
+    options->numPalettes      = NUM_PALETTES_DEFAULT;
+    options->colorsPerPalette = COLORS_PER_PALETTE_DEFAULT;
+    options->bitsPerChannel   = BITS_PER_CHANNEL_DEFAULT;
 
-    options->use_metafile = false;
+    options->fractionOfPixels        = FRACTION_OF_PIXELS_DEFAULT;
+
+    options->colorZeroBehaviour      = COLOR_ZERO_BEHAVIOUR_DEFAULT;
+    // options->colorZeroRGB = COLOR_ZERO_RGB_DEFAULT; // TODO: = hexToColor(colorInput.value); RGB(0,0,0)
+    // options->sharedColorRGB = SHARED_COLOR_RGB_DEFAULT;
+    // options->transparentColorRGB = TRANSPARENT_COLOR_RGB_DEFAULT;
+
+    options->ditherMethod            = DITHER_METHOD_DEFAULT;
+    options->ditherPattern           = DITHER_PATTERN_DEFAULT;
+    options->ditherWeight            = DITHER_WEIGHT_DEFAULT;
+
+    // Options unique to the console port
+    options->argsForLoggingToOutput  = "";
+    options->randomSeed              = RAND_SEED_DEFAULT;
+    options->use_metafile            = false;
 }
 
 
@@ -100,15 +91,15 @@ static void showHelp(void) {
         "                         meaning output may not be the same each time\n"
         "\n"
     );
-        
+
         // rgbColor colorZeroValue; // TODO: = hexToColor(colorInput.value);
         // rgbColor sharedColor;  // specify -shared_col
         // rgbColor transparentColor;  -transp_col
-        
+
 }
 
 
-// If random number seed generation was turned on then 
+// If random number seed generation was turned on then
 // log the generated number to the argument output as an argument
 static void checkLogRandArgs(quantOptions * options) {
     if (options->randomSeed != RAND_SEED_DEFAULT) {
@@ -127,7 +118,7 @@ static void checkLogRandArgs(quantOptions * options) {
 
 
 static void logArgs(int startIndex, int argc, const char* argv[], quantOptions * options) {
- 
+
     // Save all args for logging into output files
     for (int i = startIndex; i < argc; ++i) {
         options->argsForLoggingToOutput.append(" ").append( str_remove_path((string)argv[i]) );
@@ -149,7 +140,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
                 return EXIT_FAILURE;
             }
             options->outputImageFilename = argv[++i];
-        }        
+        }
         else if (!strcmp(argv[i], "-tile_w")) {
             options->tileWidth = atoi(argv[++i]);
         }
@@ -180,7 +171,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
                 printf("-col_zero must be one of: unique, shared, transp, trans_color\n");
                 return EXIT_FAILURE;
             }
-        }   
+        }
 
         // TODO:
         // rgbColor colorZeroValue; // TODO: = hexToColor(colorInput.value);
@@ -196,8 +187,8 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
                 printf("-dither must be one of: off, fast, slow\n");
                 return EXIT_FAILURE;
             }
-        }   
-        
+        }
+
         else if(!strcmp(argv[i], "-dither_pat")) {
             std::string mode_str = argv[++i];
             if      (mode_str == "diag4")  options->ditherPattern = Opts::ditherDiagonal4;
@@ -210,15 +201,15 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
                 printf("-dither_pat must be one of: diag4, horiz4, vert4, diag2, horiz2, vert2\n");
                 return EXIT_FAILURE;
             }
-        }   
-       
+        }
+
         else if (!strcmp(argv[i], "-dither_wt")) {
             options->ditherWeight = atof(argv[++i]);
         }
-        
+
         else if(!strcmp(argv[i], "-use_metafile")) {
             options->use_metafile = true;
-        }        
+        }
 
         else if(!strcmp(argv[i], "-rand_seed")) {
             options->randomSeed = atof(argv[++i]);
@@ -246,7 +237,7 @@ static int handleMetaFileArgs(quantOptions * options) {
     if ( metaFile )
     {
         static vector<string> argStrings;
-        static std::vector<char const*> metafile_argv; // Static for program scope, const to ensure c_str() pointers remain valid        
+        static std::vector<char const*> metafile_argv; // Static for program scope, const to ensure c_str() pointers remain valid
 
         // Read file contents
         stringstream metaFileBuffer;
@@ -302,8 +293,8 @@ int processArgs(int argc, char* argv[], quantOptions * options) {
     //default params
     options->sourceImageFilename = argv[ARG_AT_INPUT_FILENAME];
     options->outputImageFilename = argv[ARG_AT_INPUT_FILENAME];
-    options->outputImageFilename = options->outputImageFilename.substr(0, options->outputImageFilename.size() - 4) + "_out.png";  
-    
+    options->outputImageFilename = options->outputImageFilename.substr(0, options->outputImageFilename.size() - 4) + "_out.png";
+
     logArgs(ARG_AT_INPUT_FILENAME, argc, (const char **)argv, options);
     if (processArgs(ARG_AFTER_INPUT_FILENAME, argc, (const char **)argv, options) == EXIT_FAILURE)
         return EXIT_FAILURE;
@@ -316,12 +307,12 @@ int processArgs(int argc, char* argv[], quantOptions * options) {
     // Finalize remaining options
     options->totalPaletteColors    = options->numPalettes * options->colorsPerPalette;
     options->outputLogArgsFilename = options->outputImageFilename + ".convert_args.txt";
-    
+
     checkLogRandArgs(options);
     // printf("-->args: %s\n", options->argsForLoggingToOutput.c_str());
 
     // TODO:
     //     if (totalPaletteColors > 256) {  -> Emit png in RGB instead Indexed
-    
+
     return EXIT_SUCCESS;
 }
