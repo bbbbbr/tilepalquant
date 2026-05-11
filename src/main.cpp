@@ -7,6 +7,9 @@
 
 #include "options.h"
 
+#include "image.h"
+#include "image_png.h"
+
 // TODO
 // PNGImage sourceImage;
 // PNGImage quantizedImage;
@@ -19,8 +22,17 @@ int main(int argc, char* argv[]) {
     quantOptions options;
 
     // Make sure we had no errors
-    if ((errorCode = processArgs(argc, argv, &options)) != EXIT_SUCCESS) {
-        return errorCode;
+    if ((errorCode = processArgs(argc, argv, &options)) == EXIT_SUCCESS) {
+
+        Image sourceImageRGBA;
+        if ((errorCode = loadImageRGBAFromPNG(&options, &sourceImageRGBA)) != EXIT_SUCCESS) {
+            return errorCode;
+        }
+
+        // Test output
+        // if ((errorCode = saveImageRGBAToPNG(&options, &sourceImageRGBA)) != EXIT_SUCCESS) {
+        //     return errorCode;
+        // }
     }
 
     return errorCode;
