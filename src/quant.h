@@ -9,4 +9,6 @@
 
 using namespace std;
 
-int quantizeImage(quantOptions * quantizationOptions, Image * image);
+// vector tileSet
+
+int quantizeImage(quantOptions & quantizationOptions, Image & image);

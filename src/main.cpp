@@ -8,6 +8,7 @@
 #include "options.h"
 #include "image.h"
 #include "image_png.h"
+#include "quant.h"
 
 // TODO
 // PNGImage sourceImage;
@@ -25,6 +26,10 @@ int main(int argc, char* argv[]) {
 
         Image sourceImageRGBA;
         if ((errorCode = loadImageRGBAFromPNG(&options, &sourceImageRGBA)) != EXIT_SUCCESS) {
+            return errorCode;
+        }
+
+        if ((errorCode = quantizeImage(options, sourceImageRGBA)) != EXIT_SUCCESS) {
             return errorCode;
         }
 

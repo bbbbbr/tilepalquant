@@ -6,6 +6,8 @@
 
 using namespace std;
 
+#define RGBCOL(R,G,B) R,G,B
+
 #define RAND_SEED_DEFAULT        0
 
 #define ARG_SKIP_NONE            0
@@ -20,6 +22,14 @@ using namespace std;
 
 #define BITS_PER_CHANNEL_MIN 2
 #define BITS_PER_CHANNEL_MAX 8
+
+#define RGBA_ALPHA_MAX       255
+
+#define RGBA_RED    0
+#define RGBA_GREEN  1
+#define RGBA_BLUE   2
+#define RGBA_ALPHA  3
+
 
 struct Opts
 {
@@ -60,40 +70,39 @@ struct Opts
 struct quantOptions {
     // const body = document.getElementById("body");
     // const imageSelector = document.getElementById("image_selector");
-    int      tileWidth;
-    int      tileHeight;
-    int      numPalettes;
-    int      colorsPerPalette;
-    int      bitsPerChannel;
-    float    fractionOfPixels;
+    unsigned int  tileWidth;
+    unsigned int  tileHeight;
+    unsigned int  numPalettes;
+    unsigned int  colorsPerPalette;
+    unsigned int  bitsPerChannel;
+    float         fractionOfPixels;
 
-    int      colorZeroBehaviour;
-    rgbColor colorZeroRGB; // TODO: = hexToColor(colorInput.value);
-    rgbColor sharedColorRGB;
-    rgbColor transparentColorRGB;
+    unsigned int  colorZeroBehaviour;
+    rgbColor      colorZeroValue;
+    rgbColor      sharedColorInput;
+    rgbColor      transparentColorInput;
 
 
-    int      ditherMethod;
-    int      ditherPatternType;
-    int      ditherPixels;
-    uint8_t  ditherPattern[DITHER_WIDTH][DITHER_HEIGHT];
-    float    ditherWeight;
+    unsigned int  ditherMethod;
+    unsigned int  ditherPatternType;
+    unsigned int  ditherPixels;
+    uint8_t       ditherPattern[DITHER_WIDTH][DITHER_HEIGHT];
+    float         ditherWeight;
 
-    int      totalPaletteColors; // TODO: derived from numPalettes * colorsPerPalette
+    unsigned int  totalPaletteColors; // TODO: derived from numPalettes * colorsPerPalette
 
-    string   sourceImageFilename;
-    string   outputImageFilename;
+    string        sourceImageFilename;
+    string        outputImageFilename;
 
 
     // Options unique to the console port
-    string   argsForLoggingToOutput;
-    string   outputLogArgsFilename;
+    string        argsForLoggingToOutput;
+    string        outputLogArgsFilename;
 
-    int      randomSeed;
+    unsigned int randomSeed;
 
-    bool     use_metafile;
-
-    bool     verbose;
+    bool         use_metafile;
+    bool         verbose;
 };
 
 
@@ -106,9 +115,9 @@ struct quantOptions {
 
 #define FRACTION_OF_PIXELS_DEFAULT    0.50
 #define COLOR_ZERO_BEHAVIOUR_DEFAULT  Opts::indexZeroUnique
-#define COLOR_ZERO_RGB_DEFAULT        ; // TODO: hexToColor(colorInput.value); RGB0,0,0)
-#define SHARED_COLOR_RGB_DEFAULT      ;
-#define TRANSPARENT_COLOR_RGB_DEFAULT ;
+#define COLOR_ZERO_RGB_DEFAULT        {RGBCOL(0x00, 0x00, 0x00)}
+#define SHARED_COLOR_RGB_DEFAULT      {RGBCOL(0x00, 0x00, 0x00)}
+#define TRANSPARENT_COLOR_RGB_DEFAULT {RGBCOL(0xff, 0xff, 0xff)}
 #define DITHER_METHOD_DEFAULT         Opts::ditherOff
 #define DITHER_PATTERN_DEFAULT        Opts::ditherDiagonal4
 #define DITHER_WEIGHT_DEFAULT         0.50

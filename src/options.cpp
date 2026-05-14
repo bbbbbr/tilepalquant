@@ -7,19 +7,11 @@
 #include <cstdlib>
 #include <sstream>
 
+#include "common.h"
 #include "options.h"
 
 using namespace std;
 
-#define MIN(A,B)    ({ __typeof__(A) __a = (A); __typeof__(B) __b = (B); __a < __b ? __a : __b; })
-#define MAX(A,B)    ({ __typeof__(A) __a = (A); __typeof__(B) __b = (B); __a < __b ? __b : __a; })
-
-#define CLAMP(x, low, high) ({\
-  __typeof__(x) __x = (x); \
-  __typeof__(low) __low = (low);\
-  __typeof__(high) __high = (high);\
-  __x > __high ? __high : (__x < __low ? __low : __x);\
-  })
 
 // Order should match: Opts::ditherPatternValues
 const uint8_t ditherPatterns[Opts::ditherPatternsCount][DITHER_WIDTH][DITHER_HEIGHT] = {
@@ -76,9 +68,9 @@ static void initArgs(quantOptions * options) {
     options->fractionOfPixels        = FRACTION_OF_PIXELS_DEFAULT;
 
     options->colorZeroBehaviour      = COLOR_ZERO_BEHAVIOUR_DEFAULT;
-    // options->colorZeroRGB = COLOR_ZERO_RGB_DEFAULT; // TODO: = hexToColor(colorInput.value); RGB(0,0,0)
-    // options->sharedColorRGB = SHARED_COLOR_RGB_DEFAULT;
-    // options->transparentColorRGB = TRANSPARENT_COLOR_RGB_DEFAULT;
+    options->colorZeroValue          = COLOR_ZERO_RGB_DEFAULT;
+    options->sharedColorInput        = SHARED_COLOR_RGB_DEFAULT;
+    options->transparentColorInput   = TRANSPARENT_COLOR_RGB_DEFAULT;
 
     options->ditherMethod            = DITHER_METHOD_DEFAULT;
     options->ditherPatternType       = DITHER_PATTERN_DEFAULT;
@@ -123,7 +115,7 @@ static void showHelp(void) {
         "\n"
     );
 
-        // rgbColor colorZeroValue; // TODO: = hexToColor(colorInput.value);
+        // TODO: options to specify shared color/transparent color as RGBHEX
         // rgbColor sharedColor;  // specify -shared_col
         // rgbColor transparentColor;  -transp_col
 
@@ -193,7 +185,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
         }
         else if (!strcmp(argv[i], "-bits_per_chan")) {
             options->bitsPerChannel = atoi(argv[++i]);
-            options->bitsPerChannel = CLAMP(options->bitsPerChannel, BITS_PER_CHANNEL_MIN, BITS_PER_CHANNEL_MAX);
+            options->bitsPerChannel = CLAMP(options->bitsPerChannel, (unsigned int)BITS_PER_CHANNEL_MIN, (unsigned int)BITS_PER_CHANNEL_MAX);
         }
         else if (!strcmp(argv[i], "-fract_of_px")) {
             options->fractionOfPixels = atof(argv[++i]);
@@ -346,6 +338,13 @@ int processArgs(int argc, char* argv[], quantOptions * options) {
     // Finalize some values based on options
     options->totalPaletteColors    = options->numPalettes * options->colorsPerPalette;
     options->outputLogArgsFilename = options->outputImageFilename + ".convert_args.txt";
+    switch (options->colorZeroBehaviour) {
+          case Opts::indexZeroUnique:           options->colorZeroValue = COLOR_ZERO_RGB_DEFAULT;          break;
+          case Opts::indexZeroShared:           options->colorZeroValue = options->sharedColorInput;       break;
+          // Below not a typo, behavior from original source, uses transpFromColor for transpFromTransp
+          case Opts::indexZeroTranspFromTransp: options->colorZeroValue = options->transparentColorInput;  break;
+          case Opts::indexZeroTranspFromColor:  options->colorZeroValue = options->transparentColorInput;  break;
+    }
 
     // TODO: ditherPattern is used like so:
     /// const index = ditherPattern[pixel.x & 1][pixel.y & 1];

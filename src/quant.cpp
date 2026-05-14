@@ -4,14 +4,21 @@
 #include <cstdlib>
 #include <math.h>
 
+#include "common.h"
 #include "options.h"
 #include "image.h"
-#include "image_png.h"
+#include "tile.h"
 
 
 // Truncate value to N bits
-static uint8_t toNbit(uint8_t value, int n);
-static void    toNbitColor(uint8_t * color, int n);
+static rgbColor getColor(Image & image, unsigned int x, unsigned int y);
+static bool isPixelTransparent(quantOptions & options, Image & image, unsigned int x, unsigned int y);
+static bool isColorTransparent(quantOptions & options, rgbColor color);
+static Tile extractTile(quantOptions & options, Image & image, unsigned int startX, unsigned int startY, size_t tile_id);
+static void extractTiles(quantOptions & quantizationOptions, Image & image, vector< Tile > & tiles);
+static bool equalColors(rgbColor & c1, rgbColor & c2);
+static uint8_t toNbit(uint8_t value, unsigned int n);
+static void toNbitColor(uint8_t * color, unsigned int n);
 
 /*
 
@@ -214,17 +221,11 @@ function movePalettesCloser(palettes, pixel, alpha) {
 //
 // function quantizeImage(image) {
 // // Expects Image to be
-int quantizeImage(quantOptions * quantizationOptions, Image * image) {
+int quantizeImage(quantOptions & quantizationOptions, Image & image) {
 
-    // const reducedImageData = {
-    //     width: image.width,
-    //     height: image.height,
-    //     data: new Uint8ClampedArray(image.data.length),
-    // };
-    Image reducedImageData = *image;
+    Image reducedImageData = image;
 
-    // const useDither = quantizationOptions.dither !== Dither.Off;
-    const bool useDither = quantizationOptions->ditherMethod != Opts::ditherOff;
+    const bool useDither = quantizationOptions.ditherMethod != Opts::ditherOff;
     if (useDither) {
         // If using dither, don't apply bit depth reduction immediately
         //
@@ -232,17 +233,24 @@ int quantizeImage(quantOptions * quantizationOptions, Image * image) {
         // for (let i = 0; i < image.data.length; i++) {
         //     reducedImageData.data[i] = image.data[i];
         // }
+        if (quantizationOptions.verbose) printf("Using Dither\n");
     }
     else {
-        for (size_t i = 0; i < image->data.size(); i++) {
+        if (quantizationOptions.verbose) printf("No Dither\n");
+        for (size_t i = 0; i < image.data.size(); i++) {
             // TODO: Seems to expect each item in the array to be an RGB (OR RGBA ?) entry
             // If RGBA, why quantizing the Alpha channel?
-            reducedImageData.data[i] = toNbit(image->data[i], quantizationOptions->bitsPerChannel);
+            reducedImageData.data[i] = toNbit(image.data[i], quantizationOptions.bitsPerChannel);
         }
     }
 
+
+    // // const tiles = extractTiles(reducedImageData);
+    vector< Tile > tiles;
+    extractTiles(quantizationOptions, reducedImageData, tiles);
+
+
     /*
-    const tiles = extractTiles(reducedImageData);
     let avgPixelsPerTile = 0;
     for (const tile of tiles) {
         avgPixelsPerTile += tile.colors.length;
@@ -927,82 +935,201 @@ function closestPaletteDistanceDither(palettes, tile) {
     const index = minIndex(distances);
     return [index, distances[index]];
 }
-function getColor(image, x, y) {
+*/
+                // function getColor(image, x, y) {
+                //     // Seems to operate on raw RGBA8888 image buffer
+                //     const index = 4 * (x + image.width * y);
+                //     const color = [
+                //         image.data[index],
+                //         image.data[index + 1],
+                //         image.data[index + 2],
+                //     ];
+                //     return color;
+                // }
+// TODO: Inline?
+static rgbColor getColor(Image & image, unsigned int x, unsigned int y) {
     // Seems to operate on raw RGBA8888 image buffer
-    const index = 4 * (x + image.width * y);
-    const color = [
-        image.data[index],
-        image.data[index + 1],
-        image.data[index + 2],
-    ];
+    const unsigned int index = RGBA8888_SZ * (x + (image.width * y));
+    const rgbColor color = {
+        image.data[index + RGBA8_R],
+        image.data[index + RGBA8_G],
+        image.data[index + RGBA8_B],
+    };
     return color;
 }
-function extractTile(image, startX, startY) {
-    const { tileWidth, tileHeight, colorZeroBehaviour, colorZeroValue } = quantizationOptions;
-    const tile = {
-        colors: [],
-        counts: [],
-        pixels: [],
-    };
-    const endX = Math.min(startX + tileWidth, image.width);
-    const endY = Math.min(startY + tileHeight, image.height);
-    for (let y = startY; y < endY; y++) {
-        for (let x = startX; x < endX; x++) {
-            const color = getColor(image, x, y);
+                // function extractTile(image, startX, startY) {
+                //     const { tileWidth, tileHeight, colorZeroBehaviour, colorZeroValue } = quantizationOptions;
+                //     const tile = {
+                //         colors: [],
+                //         counts: [],
+                //         pixels: [],
+                //     };
+                //     const endX = Math.min(startX + tileWidth, image.width);
+                //     const endY = Math.min(startY + tileHeight, image.height);
+                //     for (let y = startY; y < endY; y++) {
+                //         for (let x = startX; x < endX; x++) {
+                //             const color = getColor(image, x, y);
+                //             // skip transparent pixels
+                //             if (isColorTransparent(color) || isPixelTransparent(x, y)) {
+                //                 continue;
+                //             }
+                //             tile.pixels.push({ tile, color, x, y });
+                //             const colorIndex = tile.colors.findIndex((c) => equalColors(c, color));
+                //             if (colorIndex >= 0) {
+                //                 tile.counts[colorIndex]++;
+                //             }
+                //             else {
+                //                 tile.colors.push(color);
+                //                 tile.counts.push(1);
+                //             }
+                //         }
+                //     }
+                //     return tile;
+                //     function isPixelTransparent(x, y) {
+                //         const index = 4 * (x + image.width * y);
+                //         return (colorZeroBehaviour ===
+                //             ColorZeroBehaviour.TransparentFromTransparent &&
+                //             image.data[index + 3] < 255);
+                //     }
+                //     function isColorTransparent(color) {
+                //         return (colorZeroBehaviour === ColorZeroBehaviour.TransparentFromColor &&
+                //             equalColors(color, colorZeroValue));
+                //     }
+                // }
+
+
+// extractTile(image, startX, startY) {
+static Tile extractTile(quantOptions & options, Image & image, unsigned int startX, unsigned int startY, size_t tile_id) {
+    // const { tileWidth, tileHeight, colorZeroBehaviour, colorZeroValue } = quantizationOptions;
+    // See tile.h
+    // const tile = {
+    //     colors: [],
+    //     counts: [],
+    //     pixels: [],
+    // };
+    Tile tile;
+    const unsigned int endX = MIN(startX + options.tileWidth, image.width);
+    const unsigned int endY = MIN(startY + options.tileHeight, image.height);
+    for (unsigned int y = startY; y < endY; y++) {
+        for (unsigned int x = startX; x < endX; x++) {
+            const rgbColor color = getColor(image, x, y);
             // skip transparent pixels
-            if (isColorTransparent(color) || isPixelTransparent(x, y)) {
+            if (isColorTransparent(options, color) || isPixelTransparent(options, image, x, y)) {
                 continue;
             }
-            tile.pixels.push({ tile, color, x, y });
-            const colorIndex = tile.colors.findIndex((c) => equalColors(c, color));
-            if (colorIndex >= 0) {
-                tile.counts[colorIndex]++;
-            }
-            else {
-                tile.colors.push(color);
-                tile.counts.push(1);
-            }
+            // TODO: This is trying to push an entry that contains a reference to the tile, rgbcolor, x and y, they all get used later
+            // TODO: IMPORTANT!: Must push a reference to the parent tile eventually. or at least find a way to derive it
+            // tile.pixels.push({ tile, color, x, y });
+            const pixelEntry pixel = {tile_id, color, x, y};
+            tile.pixels.push_back(pixel);
+
+// CURRENT WORK
+            // const unsigned int colorIndex = tile.colors.findIndex((c) => equalColors(c, color));
+            // if (colorIndex >= 0) {
+            //     tile.counts[colorIndex]++;
+            // }
+            // else {
+            //     tile.colors.push(color);
+            //     tile.counts.push(1);
+            // }
         }
     }
     return tile;
-    function isPixelTransparent(x, y) {
-        const index = 4 * (x + image.width * y);
-        return (colorZeroBehaviour ===
-            ColorZeroBehaviour.TransparentFromTransparent &&
-            image.data[index + 3] < 255);
-    }
-    function isColorTransparent(color) {
-        return (colorZeroBehaviour === ColorZeroBehaviour.TransparentFromColor &&
-            equalColors(color, colorZeroValue));
-    }
 }
-function extractTiles(image) {
-    const { tileWidth, tileHeight } = quantizationOptions;
-    const tiles = [];
-    let totalPixels = 0;
-    let tileCount = 0;
-    for (let y = 0; y < image.height; y += tileHeight) {
-        for (let x = 0; x < image.width; x += tileWidth) {
-            const tile = extractTile(image, x, y);
-            if (tile.colors.length === 0)
-                continue;
-            tiles.push(tile);
-            totalPixels += tile.pixels.length;
-            tileCount++;
+
+
+// TODO: Inline?
+// isPixelTransparent(x, y) {
+bool isPixelTransparent(quantOptions & options, Image & image, unsigned int x, unsigned int y) {
+    const unsigned int index = RGBA8888_SZ * (x + image.width * y);
+    return ((options.colorZeroBehaviour == Opts::indexZeroTranspFromTransp) &&
+        (image.data[index + RGBA_ALPHA] < RGBA_ALPHA_MAX));
+}
+
+// function isColorTransparent(color) {
+bool isColorTransparent(quantOptions & options, rgbColor color) {
+    return ((options.colorZeroBehaviour == Opts::indexZeroTranspFromColor) &&
+        equalColors(color, options.colorZeroValue));
+}
+
+
+                    // function extractTiles(image) {
+                    //     const { tileWidth, tileHeight } = quantizationOptions;
+                    //     const tiles = [];
+                    //     let totalPixels = 0;
+                    //     let tileCount = 0;
+                    //     for (let y = 0; y < image.height; y += tileHeight) {
+                    //         for (let x = 0; x < image.width; x += tileWidth) {
+                    //             const tile = extractTile(image, x, y);
+                    //             if (tile.colors.length === 0)
+                    //                 continue;
+                    //             tiles.push(tile);
+                    //             totalPixels += tile.pixels.length;
+                    //             tileCount++;
+                    //         }
+                    //     }
+                    //     const avgPixelsPerTile = totalPixels / tileCount;
+                    //     console.log("avg pixels per tile: " + avgPixelsPerTile.toFixed(2));
+                    //     return tiles;
+                    // }
+// function extractTiles(image) {
+// TODO: should this change to returning the vector full of tiles? return by reference?
+static void extractTiles(quantOptions & options, Image & image, vector< Tile > & tiles) {
+    // size_t totalPixels = 0;
+    // size_t tileCount = 0;
+    size_t tile_id = 0;
+    for (unsigned int y = 0; y < image.height; y += options.tileHeight) {
+        for (unsigned int x = 0; x < image.width; x += options.tileWidth) {
+            const Tile tile = extractTile(options, image, x, y, tile_id);
+            // TODO: DEBUG TEST
+            if (options.verbose) printf("-> Extract tile @ %4u x %4u:  colors.sz=%3zu, pixels.sz = %3zu, tilenum=%zu vs px-tilenum=%zu\n",
+                                        x,y, tile.colors.size(), tile.pixels.size(),
+                                        tile_id, tile.pixels[0].parent_tile_id);
+           if (tile.colors.size() == 0)
+               continue;
+            tiles.push_back(tile);
+            tile_id++;
+            // These are just for stats collecting in the original version
+            // totalPixels += tile.pixels.length;
+            // tileCount++;
         }
     }
-    const avgPixelsPerTile = totalPixels / tileCount;
-    console.log("avg pixels per tile: " + avgPixelsPerTile.toFixed(2));
-    return tiles;
-}
-function equalColors(c1, c2) {
-    for (let i = 0; i < c1.length; i++) {
-        if (c1[i] !== c2[i]) {
-            return false;
+
+
+    // TODO: DEBUG TEST
+        if (options.verbose) printf("****** Num Tiles = %zu ******* \n", tiles.size());
+        for (size_t i = 0; i < tiles.size(); i++) {
+            if (tiles[i].pixels.size() > 0) {
+                if (options.verbose) printf("-> Saved Tile [%4zu]:  colors.sz=%3zu, pixels.sz = %3zu, tilenum=%zu vs px-tilenum=%zu\n",
+                                            i, tiles[i].colors.size(), tiles[i].pixels.size(),
+                                            i, tiles[i].pixels[0].parent_tile_id);
+                }
         }
-    }
+    // TODO: END DEBUG TEST
+
+    // const avgPixelsPerTile = totalPixels / tileCount;
+    // console.log("avg pixels per tile: " + avgPixelsPerTile.toFixed(2));
+    // return tiles;
+}
+
+                // function equalColors(c1, c2) {
+                //     for (let i = 0; i < c1.length; i++) {
+                //         if (c1[i] !== c2[i]) {
+                //             return false;
+                //         }
+                //     }
+                //     return true;
+                // }
+// TODO: this could be part of the class. could be optimized
+// equalColors(c1, c2) {
+static bool equalColors(rgbColor & c1, rgbColor & c2) {
+    if (c1.ch.r != c2.ch.r) return false;
+    if (c1.ch.g != c2.ch.g) return false;
+    if (c1.ch.b != c2.ch.b) return false;
     return true;
 }
+
+/*
 function extractAllPixels(tiles) {
     const pixels = [];
     for (const tile of tiles) {
@@ -1314,14 +1441,14 @@ function clampColor(color, minValue, maxValue) {
 const float alphaValues[] = {0, 255, 85, 36.42857, 17, 8.22581, 4.04762, 2.00787, 1};
 
 // TODO: I think uint8 return type will work for all expected use cases
-static uint8_t toNbit(uint8_t value, int n) {
+static uint8_t toNbit(uint8_t value, unsigned int n) {
     // Expects N to be clamped per BITS_PER_CHANNEL_MIN/MAX
     const float alpha = alphaValues[n];
     return (uint8_t)round(round((float)value / alpha) * alpha);
 }
 
-static void toNbitColor(uint8_t * color, int n) {
-    for (int i = 0; i < 3; i++) {
+static void toNbitColor(uint8_t * color, unsigned int n) {
+    for (unsigned int i = 0; i < 3; i++) {
         color[i] = toNbit(color[i], n);
     }
 }

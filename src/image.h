@@ -28,11 +28,26 @@ using namespace std;
 // #define MAX(A,B) ((A)>(B)?(A):(B))
 
 struct rgbColor {
-    uint8_t color[RGB888_SZ];
+    union {
+        uint8_t chan[RGB888_SZ];
+        struct {
+            uint8_t r;
+            uint8_t g;
+            uint8_t b;
+        } ch;
+    };
 };
 
 struct rgbaColor {
-    uint8_t color[RGBA8888_SZ];
+    union {
+        uint8_t chan[RGB888_SZ];
+        struct {
+            uint8_t r;
+            uint8_t g;
+            uint8_t b;
+            uint8_t alpha;
+        } ch;
+    };
 };
 
 struct Image {
