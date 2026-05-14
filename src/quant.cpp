@@ -1012,7 +1012,7 @@ static Tile extractTile(quantOptions & options, Image & image, unsigned int star
     const unsigned int endY = MIN(startY + options.tileHeight, image.height);
     for (unsigned int y = startY; y < endY; y++) {
         for (unsigned int x = startX; x < endX; x++) {
-            const rgbColor color = getColor(image, x, y);
+            rgbColor color = getColor(image, x, y);
             // skip transparent pixels
             if (isColorTransparent(options, color) || isPixelTransparent(options, image, x, y)) {
                 continue;
@@ -1023,15 +1023,22 @@ static Tile extractTile(quantOptions & options, Image & image, unsigned int star
             const pixelEntry pixel = {tile_id, color, x, y};
             tile.pixels.push_back(pixel);
 
-// CURRENT WORK
-            // const unsigned int colorIndex = tile.colors.findIndex((c) => equalColors(c, color));
-            // if (colorIndex >= 0) {
-            //     tile.counts[colorIndex]++;
-            // }
-            // else {
-            //     tile.colors.push(color);
-            //     tile.counts.push(1);
-            // }
+            // Look for matching colors, if present then increment the matching color index in counts[]
+            // otherwise create a new colors/counts entry
+            //
+            // Replaces: colorIndex = tile.colors.findIndex((c) => equalColors(c, color));
+            int colorIndex;
+            bool foundMatch = false;
+            for (size_t c = 0; c < tile.colors.size(); c++) {
+               if (equalColors(tile.colors[c], color)) { colorIndex = c; foundMatch = true; break;}
+            }
+            if (foundMatch) {
+                tile.counts[colorIndex]++;
+            }
+            else {
+                tile.colors.push_back(color);
+                tile.counts.push_back(1); // New Color entry with counter value of "1"
+            }
         }
     }
     return tile;
@@ -1085,6 +1092,8 @@ static void extractTiles(quantOptions & options, Image & image, vector< Tile > &
             if (options.verbose) printf("-> Extract tile @ %4u x %4u:  colors.sz=%3zu, pixels.sz = %3zu, tilenum=%zu vs px-tilenum=%zu\n",
                                         x,y, tile.colors.size(), tile.pixels.size(),
                                         tile_id, tile.pixels[0].parent_tile_id);
+            // TODO: DEBUG TEST
+           if (tile.colors.size() == 0) printf(" -----> Empty tile\n");
            if (tile.colors.size() == 0)
                continue;
             tiles.push_back(tile);

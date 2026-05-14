@@ -23,8 +23,8 @@ struct pixelEntry {
 // };
 struct Tile
 {
-    vector <unsigned char> colors; // TODO: what type
-    vector <unsigned char> counts;
+    vector <rgbColor>   colors;
+    vector <size_t>     counts;
     vector <pixelEntry> pixels;
 
     // unsigned char pal;
