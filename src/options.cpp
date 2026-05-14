@@ -11,6 +11,15 @@
 
 using namespace std;
 
+#define MIN(A,B)    ({ __typeof__(A) __a = (A); __typeof__(B) __b = (B); __a < __b ? __a : __b; })
+#define MAX(A,B)    ({ __typeof__(A) __a = (A); __typeof__(B) __b = (B); __a < __b ? __b : __a; })
+
+#define CLAMP(x, low, high) ({\
+  __typeof__(x) __x = (x); \
+  __typeof__(low) __low = (low);\
+  __typeof__(high) __high = (high);\
+  __x > __high ? __high : (__x < __low ? __low : __x);\
+  })
 
 // Order should match: Opts::ditherPatternValues
 const uint8_t ditherPatterns[Opts::ditherPatternsCount][DITHER_WIDTH][DITHER_HEIGHT] = {
@@ -184,6 +193,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
         }
         else if (!strcmp(argv[i], "-bits_per_chan")) {
             options->bitsPerChannel = atoi(argv[++i]);
+            options->bitsPerChannel = CLAMP(options->bitsPerChannel, BITS_PER_CHANNEL_MIN, BITS_PER_CHANNEL_MAX);
         }
         else if (!strcmp(argv[i], "-fract_of_px")) {
             options->fractionOfPixels = atof(argv[++i]);

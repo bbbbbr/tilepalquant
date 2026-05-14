@@ -1,22 +1,37 @@
+#include <stdio.h>
+#include <fstream>
+#include <cstdint>
+#include <cstdlib>
+#include <math.h>
+
+#include "options.h"
+#include "image.h"
+#include "image_png.h"
+
+
+// Truncate value to N bits
+static uint8_t toNbit(uint8_t value, int n);
+static void    toNbitColor(uint8_t * color, int n);
+
 /*
 
-onmessage = function (event) {
-    updateProgress(0);
-    const data = event.data;
-    quantizationOptions = data.quantizationOptions;
-    ditherPattern = ditherPatterns.get(quantizationOptions.ditherPattern);
-    const patternPixels2 = new Set([
-        DitherPattern.Diagonal2,
-        DitherPattern.Horizontal2,
-        DitherPattern.Vertical2,
-    ]);
-    if (patternPixels2.has(quantizationOptions.ditherPattern)) {
-        ditherPixels = 2;
-    }
-    quantizeImage(data.imageData);
-    updateProgress(100);
-    postMessage({ action: Action.DoneQuantization });
-};
+                        onmessage = function (event) {
+                            updateProgress(0);
+                            const data = event.data;
+                            quantizationOptions = data.quantizationOptions;
+                            ditherPattern = ditherPatterns.get(quantizationOptions.ditherPattern);
+                            const patternPixels2 = new Set([
+                                DitherPattern.Diagonal2,
+                                DitherPattern.Horizontal2,
+                                DitherPattern.Vertical2,
+                            ]);
+                            if (patternPixels2.has(quantizationOptions.ditherPattern)) {
+                                ditherPixels = 2;
+                            }
+                            quantizeImage(data.imageData);
+                            updateProgress(100);
+                            postMessage({ action: Action.DoneQuantization });
+                        };
 
 function updatePalettes(palettes, doSorting) {
     let pal = structuredClone(palettes);
@@ -63,25 +78,170 @@ function movePalettesCloser(palettes, pixel, alpha) {
         moveColorCloser(palettes[closestPaletteIndex][closestColorIndex], targetColor, alpha);
     }
 }
-function quantizeImage(image) {
-    console.log(quantizationOptions);
-    const t0 = performance.now();
-    const reducedImageData = {
-        width: image.width,
-        height: image.height,
-        data: new Uint8ClampedArray(image.data.length),
-    };
-    const useDither = quantizationOptions.dither !== Dither.Off;
+
+*/
+
+                            // function quantizeImage(image) {
+                            //     console.log(quantizationOptions);
+                            //     const t0 = performance.now();
+                            //     const reducedImageData = {
+                            //         width: image.width,
+                            //         height: image.height,
+                            //         data: new Uint8ClampedArray(image.data.length),
+                            //     };
+                            //     const useDither = quantizationOptions.dither !== Dither.Off;
+                            //     if (useDither) {
+                            //         for (let i = 0; i < image.data.length; i++) {
+                            //             reducedImageData.data[i] = image.data[i];
+                            //         }
+                            //     }
+                            //     else {
+                            //         for (let i = 0; i < image.data.length; i++) {
+                            //             reducedImageData.data[i] = toNbit(image.data[i], quantizationOptions.bitsPerChannel);
+                            //         }
+                            //     }
+                            //     const tiles = extractTiles(reducedImageData);
+                            //     let avgPixelsPerTile = 0;
+                            //     for (const tile of tiles) {
+                            //         avgPixelsPerTile += tile.colors.length;
+                            //     }
+                            //     avgPixelsPerTile /= tiles.length;
+                            //     console.log("Colors per tile: " + avgPixelsPerTile.toFixed(2));
+                            //     const pixels = extractAllPixels(tiles);
+                            //     const randomShuffle = new RandomShuffle(pixels.length);
+                            //     const showProgress = true;
+                            //     let iterations = quantizationOptions.fractionOfPixels * pixels.length;
+                            //     let alpha = 0.3;
+                            //     let finalAlpha = 0.05;
+                            //     const meanSquareErr = meanSquareError;
+                            //     if (quantizationOptions.dither === Dither.Slow) {
+                            //         // meanSquareErr = meanSquareErrorDither;
+                            //         iterations /= 5;
+                            //         alpha = 0.1;
+                            //         finalAlpha = 0.02;
+                            //     }
+                            //     const minColorFactor = 0.5;
+                            //     const minPaletteFactor = 0.5;
+                            //     const replaceIterations = 10;
+                            //     const useMin = true;
+                            //     const prog = [25, 65, 90, 100];
+                            //     if (quantizationOptions.dither != Dither.Off) {
+                            //         prog[3] = 94;
+                            //     }
+                            //     let palettes = colorQuantize1Color(tiles, pixels, randomShuffle);
+                            //     let startIndex = 2;
+                            //     if (quantizationOptions.colorZeroBehaviour === ColorZeroBehaviour.Shared) {
+                            //         startIndex += 1;
+                            //     }
+                            //     let endIndex = quantizationOptions.colorsPerPalette;
+                            //     if (quantizationOptions.colorZeroBehaviour ===
+                            //         ColorZeroBehaviour.TransparentFromColor ||
+                            //         quantizationOptions.colorZeroBehaviour ===
+                            //             ColorZeroBehaviour.TransparentFromTransparent) {
+                            //         endIndex -= 1;
+                            //     }
+                            //     updateProgress(prog[0] / quantizationOptions.numPalettes);
+                            //     updatePalettes(palettes, false);
+                            //     if (showProgress)
+                            //         updateQuantizedImage(quantizeTiles(palettes, reducedImageData, false));
+                            //     for (let numColors = startIndex; numColors <= endIndex; numColors++) {
+                            //         expandPalettesByOneColor(palettes, tiles, pixels, randomShuffle);
+                            //         updateProgress((prog[0] * numColors) / quantizationOptions.colorsPerPalette);
+                            //         updatePalettes(palettes, false);
+                            //         if (showProgress)
+                            //             updateQuantizedImage(quantizeTiles(palettes, reducedImageData, false));
+                            //     }
+                            //     let minMse = meanSquareErr(palettes, tiles);
+                            //     let minPalettes = structuredClone(palettes);
+                            //     for (let i = 0; i < replaceIterations; i++) {
+                            //         palettes = replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
+                            //         for (let iteration = 0; iteration < iterations; iteration++) {
+                            //             const nextPixel = pixels[randomShuffle.next()];
+                            //             movePalettesCloser(palettes, nextPixel, alpha);
+                            //         }
+                            //         const mse = meanSquareErr(palettes, tiles);
+                            //         if (mse < minMse) {
+                            //             minMse = mse;
+                            //             minPalettes = structuredClone(palettes);
+                            //         }
+                            //         updateProgress(prog[0] + ((prog[1] - prog[0]) * (i + 1)) / replaceIterations);
+                            //         updatePalettes(palettes, false);
+                            //         if (showProgress) {
+                            //             if (useMin && i === replaceIterations - 1) {
+                            //                 updateQuantizedImage(quantizeTiles(minPalettes, reducedImageData, false));
+                            //             }
+                            //             else {
+                            //                 updateQuantizedImage(quantizeTiles(palettes, reducedImageData, false));
+                            //             }
+                            //         }
+                            //         console.log("MSE: " + mse.toFixed(0));
+                            //         // console.log((performance.now() - t1).toFixed(0) + " ms");
+                            //     }
+                            //     if (useMin) {
+                            //         palettes = minPalettes;
+                            //     }
+                            //     if (!useDither)
+                            //         palettes = reducePalettes(palettes, quantizationOptions.bitsPerChannel);
+                            //     const finalIterations = iterations * 10;
+                            //     let nextUpdate = iterations;
+                            //     for (let iteration = 0; iteration < finalIterations; iteration++) {
+                            //         const nextPixel = pixels[randomShuffle.next()];
+                            //         movePalettesCloser(palettes, nextPixel, finalAlpha);
+                            //         if (iteration >= nextUpdate) {
+                            //             nextUpdate += iterations;
+                            //             updateProgress(prog[1] + ((prog[2] - prog[1]) * iteration) / finalIterations);
+                            //             updatePalettes(palettes, false);
+                            //         }
+                            //     }
+                            //     console.log("Normal final: " + meanSquareError(palettes, tiles).toFixed(0));
+                            //     console.log("Dither final: " + meanSquareErrorDither(palettes, tiles).toFixed(0));
+                            //     updateProgress(prog[2]);
+                            //     updatePalettes(palettes, false);
+                            //     if (!useDither) {
+                            //         palettes = reducePalettes(palettes, quantizationOptions.bitsPerChannel);
+                            //         for (let i = 0; i < 3; i++) {
+                            //             palettes = kMeans(palettes, tiles);
+                            //             updateProgress(prog[2] + ((prog[3] - prog[2]) * (i + 1)) / 3);
+                            //             updatePalettes(palettes, false);
+                            //         }
+                            //     }
+                            //     palettes = reducePalettes(palettes, quantizationOptions.bitsPerChannel);
+                            //     updatePalettes(palettes, true);
+                            //     updateQuantizedImage(quantizeTiles(palettes, reducedImageData, useDither));
+                            //     console.log("> MSE: " + meanSquareError(palettes, tiles).toFixed(2));
+                            //     console.log(`> Time: ${((performance.now() - t0) / 1000).toFixed(2)} sec`);
+                            // }
+//
+// function quantizeImage(image) {
+// // Expects Image to be
+int quantizeImage(quantOptions * quantizationOptions, Image * image) {
+
+    // const reducedImageData = {
+    //     width: image.width,
+    //     height: image.height,
+    //     data: new Uint8ClampedArray(image.data.length),
+    // };
+    Image reducedImageData = *image;
+
+    // const useDither = quantizationOptions.dither !== Dither.Off;
+    const bool useDither = quantizationOptions->ditherMethod != Opts::ditherOff;
     if (useDither) {
-        for (let i = 0; i < image.data.length; i++) {
-            reducedImageData.data[i] = image.data[i];
-        }
+        // If using dither, don't apply bit depth reduction immediately
+        //
+        // Copy already happed automatically on var instantiation above
+        // for (let i = 0; i < image.data.length; i++) {
+        //     reducedImageData.data[i] = image.data[i];
+        // }
     }
     else {
-        for (let i = 0; i < image.data.length; i++) {
-            reducedImageData.data[i] = toNbit(image.data[i], quantizationOptions.bitsPerChannel);
+        for (size_t i = 0; i < image->data.size(); i++) {
+            // TODO: Seems to expect each item in the array to be an RGB (OR RGBA ?) entry
+            // If RGBA, why quantizing the Alpha channel?
+            reducedImageData.data[i] = toNbit(image->data[i], quantizationOptions->bitsPerChannel);
         }
     }
+
+    /*
     const tiles = extractTiles(reducedImageData);
     let avgPixelsPerTile = 0;
     for (const tile of tiles) {
@@ -192,7 +352,12 @@ function quantizeImage(image) {
     updateQuantizedImage(quantizeTiles(palettes, reducedImageData, useDither));
     console.log("> MSE: " + meanSquareError(palettes, tiles).toFixed(2));
     console.log(`> Time: ${((performance.now() - t0) / 1000).toFixed(2)} sec`);
+    */
+
+    return EXIT_SUCCESS;
 }
+
+/*
 function reducePalettes(palettes, bitsPerChannel) {
     const result = [];
     for (const palette of palettes) {
@@ -763,6 +928,7 @@ function closestPaletteDistanceDither(palettes, tile) {
     return [index, distances[index]];
 }
 function getColor(image, x, y) {
+    // Seems to operate on raw RGBA8888 image buffer
     const index = 4 * (x + image.width * y);
     const color = [
         image.data[index],
@@ -1131,17 +1297,36 @@ function clampColor(color, minValue, maxValue) {
         }
     }
 }
+*/
+
+                            // // alpha = 255 / (2 ** n - 1)
+                            // const alphaValues = [0, 255, 85, 36.42857, 17, 8.22581, 4.04762, 2.00787, 1];
+                            // function toNbit(value, n) {
+                            //     const alpha = alphaValues[n];
+                            //     return Math.round(Math.round(value / alpha) * alpha);
+                            // }
+                            // function toNbitColor(color, n) {
+                            //     for (let i = 0; i < 3; i++) {
+                            //         color[i] = toNbit(color[i], n);
+                            //     }
+                            // }
 // alpha = 255 / (2 ** n - 1)
-const alphaValues = [0, 255, 85, 36.42857, 17, 8.22581, 4.04762, 2.00787, 1];
-function toNbit(value, n) {
-    const alpha = alphaValues[n];
-    return Math.round(Math.round(value / alpha) * alpha);
+const float alphaValues[] = {0, 255, 85, 36.42857, 17, 8.22581, 4.04762, 2.00787, 1};
+
+// TODO: I think uint8 return type will work for all expected use cases
+static uint8_t toNbit(uint8_t value, int n) {
+    // Expects N to be clamped per BITS_PER_CHANNEL_MIN/MAX
+    const float alpha = alphaValues[n];
+    return (uint8_t)round(round((float)value / alpha) * alpha);
 }
-function toNbitColor(color, n) {
-    for (let i = 0; i < 3; i++) {
+
+static void toNbitColor(uint8_t * color, int n) {
+    for (int i = 0; i < 3; i++) {
         color[i] = toNbit(color[i], n);
     }
 }
+
+/*
 function moveColorCloser(color, pixelColor, alpha) {
     for (let i = 0; i < color.length; i++) {
         color[i] = (1 - alpha) * color[i] + alpha * pixelColor[i];

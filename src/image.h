@@ -3,7 +3,9 @@
 
 using namespace std;
 
-#define RGBA32_SZ 4 // RGBA 8:8:8:8 is 4 bytes per pixel
+#define RGB888_SZ   3             // 3 bytes per pixel
+#define RGBA8888_SZ 4             // 4 bytes per pixel
+#define RGBA32_SZ   (RGBA8888_SZ) // RGBA 8:8:8:8 is 4 bytes per pixel
 
 // ABGR:8888 (in 8 bit array format, OR RGBA:32 packed int on little-endian systems when accessed as bytes)
 #define ABGR8_R              3 // Alpha channel is [3]
@@ -23,7 +25,15 @@ using namespace std;
 #define ALPHA_FULLY_TRANSPARENT       0  // Full alpha channel transparency
 #define RGBA32_TRANSPARENT_WHITE      (RGBA32(255,255,255,ALPHA_FULLY_TRANSPARENT))  // White, full transparency
 
-#define MAX(A,B) ((A)>(B)?(A):(B))
+// #define MAX(A,B) ((A)>(B)?(A):(B))
+
+struct rgbColor {
+    uint8_t color[RGB888_SZ];
+};
+
+struct rgbaColor {
+    uint8_t color[RGBA8888_SZ];
+};
 
 struct Image {
     vector< unsigned char > data; //data in indexed format

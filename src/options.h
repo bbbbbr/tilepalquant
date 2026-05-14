@@ -2,11 +2,9 @@
 
 #include <string>
 #include <cstring>
+#include "image.h"
 
 using namespace std;
-
-// TODO: Implement rgbColor
-#define rgbColor int
 
 #define RAND_SEED_DEFAULT        0
 
@@ -20,8 +18,9 @@ using namespace std;
 #define DITHER_HEIGHT        2
 #define DITHER_PATTERN_AR_SZ (DITHER_WIDTH * DITHER_HEIGHT)
 
-// TODO: CAPS_CAPS?
-//
+#define BITS_PER_CHANNEL_MIN 2
+#define BITS_PER_CHANNEL_MAX 8
+
 struct Opts
 {
     enum indexZeroValues {

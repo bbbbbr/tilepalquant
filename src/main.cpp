@@ -6,7 +6,6 @@
 #include <string>
 
 #include "options.h"
-
 #include "image.h"
 #include "image_png.h"
 
@@ -52,6 +51,8 @@ int main(int argc, char* argv[]) {
 /*
  TODO
 
+    // Display processing updates and refresh image download links along the way
+    // Most of this can be skipped
         else if (data.action === Action.UpdateQuantizedImage) {
             const imageData = data.imageData;
             const quantizedImageData = new window.ImageData(imageData.width, imageData.height);
@@ -89,6 +90,7 @@ int main(int argc, char* argv[]) {
             palettesImageDownload.href = palettesImage.toDataURL();
         }
     };
+
 
     // Process the image
     worker.postMessage({
