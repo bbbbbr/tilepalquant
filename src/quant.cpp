@@ -245,18 +245,21 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     }
 
 
-    // // const tiles = extractTiles(reducedImageData);
-    vector< Tile > tiles;
+    // const tiles = extractTiles(reducedImageData);
+    vector <Tile> tiles;
     extractTiles(quantizationOptions, reducedImageData, tiles);
 
 
+    if (quantizationOptions.verbose) {
+      float avgPixelsPerTile = 0;
+      for (const Tile & tile : tiles) {
+         avgPixelsPerTile += tile.colors.size();
+      }
+      avgPixelsPerTile /= tiles.size();
+      printf("Colors per tile: %0.2f\n", avgPixelsPerTile);
+   }
+
     /*
-    let avgPixelsPerTile = 0;
-    for (const tile of tiles) {
-        avgPixelsPerTile += tile.colors.length;
-    }
-    avgPixelsPerTile /= tiles.length;
-    console.log("Colors per tile: " + avgPixelsPerTile.toFixed(2));
     const pixels = extractAllPixels(tiles);
     const randomShuffle = new RandomShuffle(pixels.length);
     const showProgress = true;
