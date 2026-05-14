@@ -1085,8 +1085,8 @@ bool isColorTransparent(quantOptions & options, rgbColor color) {
 // function extractTiles(image) {
 // TODO: should this change to returning the vector full of tiles? return by reference?
 static void extractTiles(quantOptions & options, Image & image, vector< Tile > & tiles) {
-    // size_t totalPixels = 0;
-    // size_t tileCount = 0;
+    size_t totalPixels = 0;
+    size_t tileCount = 0;
     size_t tile_id = 0;
     for (unsigned int y = 0; y < image.height; y += options.tileHeight) {
         for (unsigned int x = 0; x < image.width; x += options.tileWidth) {
@@ -1102,8 +1102,8 @@ static void extractTiles(quantOptions & options, Image & image, vector< Tile > &
             tiles.push_back(tile);
             tile_id++;
             // These are just for stats collecting in the original version
-            // totalPixels += tile.pixels.length;
-            // tileCount++;
+            totalPixels += tile.pixels.size();
+            tileCount++;
         }
     }
 
@@ -1118,10 +1118,12 @@ static void extractTiles(quantOptions & options, Image & image, vector< Tile > &
                 }
         }
     // TODO: END DEBUG TEST
+    if (options.verbose) {
+       const float avgPixelsPerTile = totalPixels / tileCount;
+       printf("avg pixels per tile: %0.2f\n", avgPixelsPerTile);
+   }
 
-    // const avgPixelsPerTile = totalPixels / tileCount;
-    // console.log("avg pixels per tile: " + avgPixelsPerTile.toFixed(2));
-    // return tiles;
+   // return tiles;  // Changed to created by caller and passed by reference
 }
 
                 // function equalColors(c1, c2) {
