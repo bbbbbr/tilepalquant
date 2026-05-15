@@ -9,6 +9,9 @@ CC = $(TOOLSPREFIX)g++
 CFLAGS = -Os -Wall -g # -Wextra -pedantic
 LFLAGS = -g -s -static -lm
 
+lesswarn: CFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-function
+lesswarn: clean
+lesswarn: all
 
 # Add all c source files from $(SRCDIR)
 # Create the object files in $(OBJDIR)
