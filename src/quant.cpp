@@ -15,8 +15,9 @@ static rgbColor getColor(Image & image, unsigned int x, unsigned int y);
 static bool isPixelTransparent(quantOptions & options, Image & image, unsigned int x, unsigned int y);
 static bool isColorTransparent(quantOptions & options, rgbColor color);
 static Tile extractTile(quantOptions & options, Image & image, unsigned int startX, unsigned int startY, size_t tile_id);
-static void extractTiles(quantOptions & quantizationOptions, Image & image, vector< Tile > & tiles);
+static void extractTiles(quantOptions & quantizationOptions, Image & image, vector <Tile> & tiles);
 static bool equalColors(rgbColor & c1, rgbColor & c2);
+static void extractAllPixels(vector <Tile> & tiles, vector <pixelEntry> & pixels);
 static uint8_t toNbit(uint8_t value, unsigned int n);
 static void toNbitColor(uint8_t * color, unsigned int n);
 
@@ -259,8 +260,10 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
       printf("Colors per tile: %0.2f\n", avgPixelsPerTile);
    }
 
+    vector <pixelEntry> pixels;
+    extractAllPixels(tiles, pixels);
+
     /*
-    const pixels = extractAllPixels(tiles);
     const randomShuffle = new RandomShuffle(pixels.length);
     const showProgress = true;
     let iterations = quantizationOptions.fractionOfPixels * pixels.length;
@@ -1084,7 +1087,7 @@ bool isColorTransparent(quantOptions & options, rgbColor color) {
                     // }
 // function extractTiles(image) {
 // TODO: should this change to returning the vector full of tiles? return by reference?
-static void extractTiles(quantOptions & options, Image & image, vector< Tile > & tiles) {
+static void extractTiles(quantOptions & options, Image & image, vector <Tile> & tiles) {
     size_t totalPixels = 0;
     size_t tileCount = 0;
     size_t tile_id = 0;
@@ -1143,16 +1146,26 @@ static bool equalColors(rgbColor & c1, rgbColor & c2) {
     return true;
 }
 
-/*
-function extractAllPixels(tiles) {
-    const pixels = [];
-    for (const tile of tiles) {
-        for (const pixel of tile.pixels) {
-            pixels.push(Object.assign({}, pixel));
-        }
-    }
-    return pixels;
+            // function extractAllPixels(tiles) {
+            //     const pixels = [];
+            //     for (const tile of tiles) {
+            //         for (const pixel of tile.pixels) {
+            //             pixels.push(Object.assign({}, pixel));
+            //         }
+            //     }
+            //     return pixels;
+            // }
+static void extractAllPixels(vector <Tile> & tiles, vector <pixelEntry> & pixels) {
+      // const pixels = [];
+      for (const Tile & tile : tiles) {
+         for (const pixelEntry & pixel : tile.pixels) {
+            pixels.push_back(pixel);
+         }
+      }
+      // return pixels; // Changed to created by caller and passed by reference
 }
+
+/*
 function quantizeTiles(palettes, image, useDither) {
     const { tileWidth, tileHeight, bitsPerChannel, colorZeroBehaviour, colorZeroValue, numPalettes, colorsPerPalette, } = quantizationOptions;
     const imageIsReduced = quantizationOptions.dither !== Dither.Off;
