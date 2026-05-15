@@ -8,6 +8,7 @@
 #include "options.h"
 #include "image.h"
 #include "tile.h"
+#include "randomshuffle.h"
 
 
 // Truncate value to N bits
@@ -263,19 +264,26 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     vector <pixelEntry> pixels;
     extractAllPixels(tiles, pixels);
 
-    /*
-    const randomShuffle = new RandomShuffle(pixels.length);
-    const showProgress = true;
-    let iterations = quantizationOptions.fractionOfPixels * pixels.length;
-    let alpha = 0.3;
-    let finalAlpha = 0.05;
-    const meanSquareErr = meanSquareError;
-    if (quantizationOptions.dither === Dither.Slow) {
-        // meanSquareErr = meanSquareErrorDither;
+    RandomShuffle randomShuffle;
+    randomShuffle.init(pixels.size());
+
+    const bool showProgress = true;
+    size_t iterations = (size_t)(quantizationOptions.fractionOfPixels * (float)pixels.size());
+    float alpha = 0.3;
+    float finalAlpha = 0.05;
+
+    // This appears to be turned off, but it would swap out the mean square function used based on dither setting
+    // Not going to implement it for now since it's unused
+    // const meanSquareErr = meanSquareError;
+    #define meanSquareErrSelected meanSquareError
+    if (quantizationOptions.ditherMethod == Opts::ditherSlow) {
+        // meanSquareErr = meanSquareErrorDither;  // Commented out in JS source
         iterations /= 5;
         alpha = 0.1;
         finalAlpha = 0.02;
     }
+
+    /*
     const minColorFactor = 0.5;
     const minPaletteFactor = 0.5;
     const replaceIterations = 10;
@@ -307,7 +315,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
         if (showProgress)
             updateQuantizedImage(quantizeTiles(palettes, reducedImageData, false));
     }
-    let minMse = meanSquareErr(palettes, tiles);
+    let minMse = meanSquareErrSelected(palettes, tiles);
     let minPalettes = structuredClone(palettes);
     for (let i = 0; i < replaceIterations; i++) {
         palettes = replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
@@ -315,7 +323,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
             const nextPixel = pixels[randomShuffle.next()];
             movePalettesCloser(palettes, nextPixel, alpha);
         }
-        const mse = meanSquareErr(palettes, tiles);
+        const mse = meanSquareErrSelected(palettes, tiles);
         if (mse < minMse) {
             minMse = mse;
             minPalettes = structuredClone(palettes);
@@ -792,7 +800,37 @@ function kMeans(palettes, tiles) {
     }
     return sumColors;
 }
-function meanSquareError(palettes, tiles) {
+*/
+
+            // function meanSquareError(palettes, tiles) {
+            //     let totalDistance = 0;
+            //     let count = 0;
+            //     for (const tile of tiles) {
+            //         const palIndex = getClosestPaletteIndex(palettes, tile);
+            //         for (let i = 0; i < tile.colors.length; i++) {
+            //             const [, minDistance] = getClosestColor(palettes[palIndex], tile.colors[i]);
+            //             totalDistance += minDistance * tile.counts[i];
+            //             count += tile.counts[i];
+            //         }
+            //     }
+            //     return totalDistance / count;
+            // }
+
+            // function meanSquareErrorDither(palettes, tiles) {
+            //     let totalDistance = 0;
+            //     let count = 0;
+            //     for (const tile of tiles) {
+            //         const palIndex = getClosestPaletteIndexDither(palettes, tile);
+            //         for (const pixel of tile.pixels) {
+            //             const [, minDistance] = getClosestColorDither(palettes[palIndex], pixel);
+            //             totalDistance += minDistance;
+            //             count += 1;
+            //         }
+            //     }
+            //     return totalDistance / count;
+            // }
+/*
+float meanSquareError(palettes, tiles) {
     let totalDistance = 0;
     let count = 0;
     for (const tile of tiles) {
@@ -805,7 +843,8 @@ function meanSquareError(palettes, tiles) {
     }
     return totalDistance / count;
 }
-function meanSquareErrorDither(palettes, tiles) {
+
+float meanSquareErrorDither(palettes, tiles) {
     let totalDistance = 0;
     let count = 0;
     for (const tile of tiles) {
@@ -818,31 +857,35 @@ function meanSquareErrorDither(palettes, tiles) {
     }
     return totalDistance / count;
 }
-class RandomShuffle {
-    constructor(n) {
-        this.values = [];
-        for (let i = 0; i < n; i++) {
-            this.values.push(i);
-        }
-        this.currentIndex = n - 1;
-    }
-    shuffle() {
-        for (let i = 0; i < this.values.length; i++) {
-            const index = i + Math.floor(Math.random() * (this.values.length - i));
-            const tmp = this.values[i];
-            this.values[i] = this.values[index];
-            this.values[index] = tmp;
-        }
-    }
-    next() {
-        this.currentIndex += 1;
-        if (this.currentIndex >= this.values.length) {
-            this.shuffle();
-            this.currentIndex = 0;
-        }
-        return this.values[this.currentIndex];
-    }
-}
+*/
+         // class RandomShuffle {
+         //    constructor(n) {
+         //       this.values = [];
+         //       for (let i = 0; i < n; i++) {
+         //             this.values.push(i);
+         //       }
+         //       this.currentIndex = n - 1;
+         //    }
+         //    shuffle() {
+         //       for (let i = 0; i < this.values.length; i++) {
+         //             const index = i + Math.floor(Math.random() * (this.values.length - i));
+         //             const tmp = this.values[i];
+         //             this.values[i] = this.values[index];
+         //             this.values[index] = tmp;
+         //       }
+         //    }
+         //    next() {
+         //       this.currentIndex += 1;
+         //       if (this.currentIndex >= this.values.length) {
+         //             this.shuffle();
+         //             this.currentIndex = 0;
+         //       }
+         //       return this.values[this.currentIndex];
+         //    }
+         // }
+// See: randomshuffle.h
+
+/*
 function getClosestColor(palette, color) {
     let minIndex = palette.length - 1;
     let minDist = colorDistance(palette[minIndex], color);

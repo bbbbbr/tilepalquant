@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cstdint>
 #include <cstdlib>
+#include <ctime>
 #include <sstream>
 
 #include "common.h"
@@ -109,7 +110,7 @@ static void showHelp(void) {
         "                        (diag4, horiz4, vert4, diag2, horiz2, vert2)\n"
         "-dither_wt <num>     Dither weight (range: TODO) (default: 0.5)\n"
         "-use_metafile        Read extra options from file <inputfile>.meta (file missing not an error)\n"
-        "-rand_seed <num>     Specify random number seed for conversion (default: 0 TODO)\n"
+        "-rand_seed <num>     Specify random number seed for conversion (default: 0)\n"
         "-rand_on             Use a random value for conversion instead of fixed seed,\n"
         "                         meaning output may not be the same each time\n"
         "\n"
@@ -247,7 +248,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
 
         else if(!strcmp(argv[i], "-rand_on")) {
             srand (time(NULL));
-            options->randomSeed = rand() % 32000;
+            options->randomSeed = (unsigned int)rand() % 0xffff;
         }
 
         else {
@@ -305,6 +306,8 @@ static int handleMetaFileArgs(quantOptions * options) {
 
 int processArgs(int argc, char* argv[], quantOptions * options) {
 
+    // Init RNG for generating optional random seed option (vs deterministic seed)
+    std::srand( std::time({}) );
     initArgs(options);
 
     if (argc < 2) {
@@ -350,6 +353,9 @@ int processArgs(int argc, char* argv[], quantOptions * options) {
     /// const index = ditherPattern[pixel.x & 1][pixel.y & 1];
     memcpy(options->ditherPattern, ditherPatterns[options->ditherPatternType], DITHER_PATTERN_AR_SZ);
     options->ditherPixels = ditherPixelsSz[options->ditherPatternType];
+
+    // Apply rand seed, will be either deterministic or random depending on options
+    std::srand( options->randomSeed );
 
     checkLogRandArgs(options);
     if (options->verbose) {
