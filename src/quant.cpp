@@ -14,11 +14,21 @@
 // Truncate value to N bits
 static rgbColor getColor(Image & image, unsigned int x, unsigned int y);
 static bool isPixelTransparent(quantOptions & options, Image & image, unsigned int x, unsigned int y);
-static bool isColorTransparent(quantOptions & options, rgbColor color);
+static bool isColorTransparent(quantOptions & options, rgbColor & color);
 static Tile extractTile(quantOptions & options, Image & image, unsigned int startX, unsigned int startY, size_t tile_id);
 static void extractTiles(quantOptions & quantizationOptions, Image & image, vector <Tile> & tiles);
 static bool equalColors(rgbColor & c1, rgbColor & c2);
 static void extractAllPixels(vector <Tile> & tiles, vector <pixelEntry> & pixels);
+static void colorQuantize1Color(quantOptions & options, vector <Tile> & tiles, vector <pixelEntry> & pixels, RandomShuffle & randomShuffle, vector <vector <rgbColorDbl>> & palettes);
+
+static rgbColorDbl cloneColorU8ToDbl(rgbColor color);
+// static void cloneColor(color)
+// static void copyColor(dest, source)
+static void addColor(rgbColorDbl & c1, const rgbColor & c2);
+// static void subtractColor(c1, c2)
+static void scaleColor(rgbColorDbl & color, const double scaleFactor);
+// static void clampColor(color, minValue, maxValue)
+
 static uint8_t toNbit(uint8_t value, unsigned int n);
 static void toNbitColor(uint8_t * color, unsigned int n);
 
@@ -268,7 +278,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     randomShuffle.init(pixels.size());
 
     const bool showProgress = true;
-    size_t iterations = (size_t)(quantizationOptions.fractionOfPixels * (float)pixels.size());
+    size_t iterations = (size_t)(quantizationOptions.fractionOfPixels * (float)pixels.size());  // TODO: Wonder if this could be an option knob for quality/speed tradeoff
     float alpha = 0.3;
     float finalAlpha = 0.05;
 
@@ -283,16 +293,17 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
         finalAlpha = 0.02;
     }
 
-    /*
-    const minColorFactor = 0.5;
-    const minPaletteFactor = 0.5;
-    const replaceIterations = 10;
-    const useMin = true;
-    const prog = [25, 65, 90, 100];
-    if (quantizationOptions.dither != Dither.Off) {
+    const float minColorFactor = 0.5;
+    const float minPaletteFactor = 0.5;
+    const size_t replaceIterations = 10;
+    const bool useMin = true;
+    unsigned int prog[] = {25, 65, 90, 100};  // TODO: What are these doing?
+    if (quantizationOptions.ditherMethod == Opts::ditherOff) {
         prog[3] = 94;
     }
-    let palettes = colorQuantize1Color(tiles, pixels, randomShuffle);
+    vector <vector <rgbColorDbl>> palettes;
+    colorQuantize1Color(quantizationOptions, tiles, pixels, randomShuffle, palettes);
+    /*
     let startIndex = 2;
     if (quantizationOptions.colorZeroBehaviour === ColorZeroBehaviour.Shared) {
         startIndex += 1;
@@ -1103,7 +1114,7 @@ bool isPixelTransparent(quantOptions & options, Image & image, unsigned int x, u
 }
 
 // function isColorTransparent(color) {
-bool isColorTransparent(quantOptions & options, rgbColor color) {
+bool isColorTransparent(quantOptions & options, rgbColor & color) {
     return ((options.colorZeroBehaviour == Opts::indexZeroTranspFromColor) &&
         equalColors(color, options.colorZeroValue));
 }
@@ -1323,26 +1334,94 @@ function quantizeTiles(palettes, image, useDither) {
         }
     }
 }
-function colorQuantize1Color(tiles, pixels, randomShuffle) {
-    let iterations = quantizationOptions.fractionOfPixels * pixels.length;
-    let alpha = 0.3;
-    if (quantizationOptions.dither === Dither.Slow) {
+*/
+
+            // function colorQuantize1Color(tiles, pixels, randomShuffle) {
+            //     let iterations = quantizationOptions.fractionOfPixels * pixels.length;
+            //     let alpha = 0.3;
+            //     if (quantizationOptions.dither === Dither.Slow) {
+            //         iterations /= 5;
+            //         alpha = 0.1;
+            //     }
+            //     const avgColor = [0, 0, 0];
+            //     for (const pixel of pixels) {
+            //         addColor(avgColor, pixel.color);
+            //     }
+            //     scaleColor(avgColor, 1.0 / pixels.length);
+            //     const palettes = [[avgColor]];
+            //     if (quantizationOptions.colorZeroBehaviour === ColorZeroBehaviour.Shared) {
+            //         palettes[0].push(avgColor);
+            //         palettes[0][0] = structuredClone(quantizationOptions.colorZeroValue);
+            //     }
+            //     let splitIndex = 0;
+            //     for (let numPalettes = 2; numPalettes <= quantizationOptions.numPalettes; numPalettes++) {
+            //         palettes.push(structuredClone(palettes[splitIndex]));
+            //         for (let iteration = 0; iteration < iterations; iteration++) {
+            //             const nextPixel = pixels[randomShuffle.next()];
+            //             movePalettesCloser(palettes, nextPixel, alpha);
+            //         }
+            //         const paletteDistance = zeroArray(numPalettes);
+            //         for (const tile of tiles) {
+            //             const [palIndex, distance] = closestPaletteDistance(palettes, tile);
+            //             paletteDistance[palIndex] += distance;
+            //         }
+            //         splitIndex = maxIndex(paletteDistance);
+            //     }
+            //     return palettes;
+            // }
+static void colorQuantize1Color(quantOptions & options, vector <Tile> & tiles, vector <pixelEntry> & pixels, RandomShuffle & randomShuffle, vector <vector <rgbColorDbl>> & palettes) {
+    size_t iterations = options.fractionOfPixels * pixels.size();
+    float  alpha = 0.3;
+    if (options.ditherMethod == Opts::ditherSlow) {
         iterations /= 5;
         alpha = 0.1;
     }
-    const avgColor = [0, 0, 0];
-    for (const pixel of pixels) {
-        addColor(avgColor, pixel.color);
+
+    rgbColorDbl avgColorDbl = {0, 0, 0};
+    for (const pixelEntry & pixel : pixels) {
+        addColor(avgColorDbl, pixel.color);
     }
-    scaleColor(avgColor, 1.0 / pixels.length);
-    const palettes = [[avgColor]];
-    if (quantizationOptions.colorZeroBehaviour === ColorZeroBehaviour.Shared) {
-        palettes[0].push(avgColor);
-        palettes[0][0] = structuredClone(quantizationOptions.colorZeroValue);
+    scaleColor(avgColorDbl, 1.0 / (float)pixels.size());
+
+    // const palettes = [[avgColorDbl]];
+    //
+    // This creates a 2d array like:
+    // palettes[1][1][3] with:
+    //     [0][0][0]: 116.4280056423611 (r avg)
+    //     [0][0][1]: 94.53263346354166 (g avg)
+    //     [0][0][2]: 97.56797960069444 (b avg)
+    // Equivalent to: <vector> <vector> rgbColorDbl
+    //
+    // vector <rgbColorDbl> newRow;
+    // newRow.push_back(avgColorDbl);
+    // palettes.push_back(newRow);
+    //
+    // Equiv to above:
+    palettes.push_back(vector <rgbColorDbl> {avgColorDbl} );
+
+    if (options.colorZeroBehaviour == Opts::indexZeroShared) {
+        palettes[0].push_back(avgColorDbl);
+        // Overwrite entry [0][0] with colorZeroValue
+        palettes[0][0] = cloneColorU8ToDbl(options.colorZeroValue);
     }
+
+    // TODO: DEBUG
+    if (options.verbose) {
+        printf("****** Palette size outer:  %zu ******* \n", palettes.size());
+        for (size_t a1 = 0; a1 < palettes.size(); a1++) {
+            printf("   Inner Size: %zu \n", palettes[a1].size());
+            for (size_t a2 = 0; a2 < palettes[a1].size(); a2++) {
+                printf("     Pal Color[%zu][%zu] = r:%0.2f, g:%0.2f, b:%0.2f\n",
+                       a1, a2, palettes[a1][a2].ch.r, palettes[a1][a2].ch.g, palettes[a1][a2].ch.b);
+            }
+        }
+    }
+
+    // @ CURRENT LOC HERE
+/*
     let splitIndex = 0;
-    for (let numPalettes = 2; numPalettes <= quantizationOptions.numPalettes; numPalettes++) {
-        palettes.push(structuredClone(palettes[splitIndex]));
+    for (let numPalettes = 2; numPalettes <= options.numPalettes; numPalettes++) {
+        palettes.push_back(structuredClone(palettes[splitIndex]));
         for (let iteration = 0; iteration < iterations; iteration++) {
             const nextPixel = pixels[randomShuffle.next()];
             movePalettesCloser(palettes, nextPixel, alpha);
@@ -1355,7 +1434,9 @@ function colorQuantize1Color(tiles, pixels, randomShuffle) {
         splitIndex = maxIndex(paletteDistance);
     }
     return palettes;
+*/
 }
+/*
 function expandPalettesByOneColor(palettes, tiles, pixels, randomShuffle) {
     let iterations = quantizationOptions.fractionOfPixels * pixels.length;
     let alpha = 0.3;
@@ -1457,44 +1538,104 @@ function colorQuantize1Palette(pixels, randomShuffle, colorsPerPalette) {
     }
     return colors;
 }
-function cloneColor(color) {
-    const result = [0, 0, 0];
-    for (let i = 0; i < 3; i++) {
-        result[i] = color[i];
-    }
-    return result;
-}
-function copyColor(dest, source) {
-    for (let i = 0; i < 3; i++) {
-        dest[i] = source[i];
-    }
-}
-function addColor(c1, c2) {
-    for (let i = 0; i < 3; i++) {
-        c1[i] += c2[i];
-    }
-}
-function subtractColor(c1, c2) {
-    for (let i = 0; i < 3; i++) {
-        c1[i] -= c2[i];
-    }
-}
-function scaleColor(color, scaleFactor) {
-    for (let i = 0; i < 3; i++) {
-        color[i] *= scaleFactor;
-    }
-}
-function clampColor(color, minValue, maxValue) {
-    for (let i = 0; i < 3; i++) {
-        if (color[i] < minValue) {
-            color[i] = minValue;
-        }
-        else if (color[i] > maxValue) {
-            color[i] = maxValue;
-        }
-    }
-}
 */
+            // function cloneColor(color) {
+            //     const result = [0, 0, 0];
+            //     for (let i = 0; i < 3; i++) {
+            //         result[i] = color[i];
+            //     }
+            //     return result;
+            // }
+            // function copyColor(dest, source) {
+            //     for (let i = 0; i < 3; i++) {
+            //         dest[i] = source[i];
+            //     }
+            // }
+            // function addColor(c1, c2) {
+            //     for (let i = 0; i < 3; i++) {
+            //         c1[i] += c2[i];
+            //     }
+            // }
+            // function subtractColor(c1, c2) {
+            //     for (let i = 0; i < 3; i++) {
+            //         c1[i] -= c2[i];
+            //     }
+            // }
+            // function scaleColor(color, scaleFactor) {
+            //     for (let i = 0; i < 3; i++) {
+            //         color[i] *= scaleFactor;
+            //     }
+            // }
+            // function clampColor(color, minValue, maxValue) {
+            //     for (let i = 0; i < 3; i++) {
+            //         if (color[i] < minValue) {
+            //             color[i] = minValue;
+            //         }
+            //         else if (color[i] > maxValue) {
+            //             color[i] = maxValue;
+            //         }
+            //     }
+            // }
+
+static rgbColorDbl cloneColorU8ToDbl(rgbColor color) {
+    rgbColorDbl colorDbl = {(double)color.ch.r, (double)color.ch.g, (double)color.ch.b};
+    return colorDbl;
+}
+
+// static void cloneColor(color) {
+//     const result = [0, 0, 0];
+//     for (let i = 0; i < RGB_SZ; i++) {
+//         result[i] = color[i];
+//     }
+//     return result;
+// }
+// static void copyColor(dest, source) {
+//     for (let i = 0; i < RGB_SZ; i++) {
+//         dest[i] = source[i];
+//     }
+// }
+
+
+// Use Double floating point version of rgbColor due to large totals and non-integer values unsuitable for 8 bit rgbColor type
+static void addColor(rgbColorDbl & c1, const rgbColor & c2) {
+    // for (unsigned int i = 0; i < RGB_SZ; i++) {
+    //     c1[i] += c2[i];
+    // }
+    c1.ch.r += c2.ch.r;
+    c1.ch.g += c2.ch.g;
+    c1.ch.b += c2.ch.b;
+}
+
+
+// static void subtractColor(c1, c2) {
+//     for (let i = 0; i < RGB_SZ; i++) {
+//         c1[i] -= c2[i];
+//     }
+// }
+
+
+// Use Double floating point version of rgbColor due to large totals and non-integer values unsuitable for 8 bit rgbColor type
+static void scaleColor(rgbColorDbl & color, const double scaleFactor) {
+    // for (let i = 0; i < RGB_SZ; i++) {
+    //     color[i] *= scaleFactor;
+    // }
+    color.ch.r *= scaleFactor;
+    color.ch.g *= scaleFactor;
+    color.ch.b *= scaleFactor;
+}
+
+
+// static void clampColor(color, minValue, maxValue) {
+//     for (let i = 0; i < RGB_SZ; i++) {
+//         if (color[i] < minValue) {
+//             color[i] = minValue;
+//         }
+//         else if (color[i] > maxValue) {
+//             color[i] = maxValue;
+//         }
+//     }
+// }
+
 
                             // // alpha = 255 / (2 ** n - 1)
                             // const alphaValues = [0, 255, 85, 36.42857, 17, 8.22581, 4.04762, 2.00787, 1];

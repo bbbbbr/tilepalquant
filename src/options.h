@@ -116,9 +116,9 @@ struct quantOptions {
 #define FRACTION_OF_PIXELS_DEFAULT    0.50
 #define COLOR_ZERO_BEHAVIOUR_DEFAULT  Opts::indexZeroUnique
 // TODO: with C++20 designated inits could be used
-#define COLOR_ZERO_RGB_DEFAULT        {RGBCOL(0x00, 0x00, 0x00)}
-#define SHARED_COLOR_RGB_DEFAULT      {RGBCOL(0x00, 0x00, 0x00)}
-#define TRANSPARENT_COLOR_RGB_DEFAULT {RGBCOL(0xff, 0xff, 0xff)}
+#define COLOR_ZERO_RGB_DEFAULT        {RGBCOL(0, 0, 0)}
+#define SHARED_COLOR_RGB_DEFAULT      {RGBCOL(0, 0, 0)}
+#define TRANSPARENT_COLOR_RGB_DEFAULT {RGBCOL(255, 0, 255)}
 #define DITHER_METHOD_DEFAULT         Opts::ditherOff
 #define DITHER_PATTERN_DEFAULT        Opts::ditherDiagonal4
 #define DITHER_WEIGHT_DEFAULT         0.50

@@ -3,6 +3,7 @@
 
 using namespace std;
 
+#define RGB_SZ      3             // 3 values per pixel
 #define RGB888_SZ   3             // 3 bytes per pixel
 #define RGBA8888_SZ 4             // 4 bytes per pixel
 #define RGBA32_SZ   (RGBA8888_SZ) // RGBA 8:8:8:8 is 4 bytes per pixel
@@ -27,7 +28,19 @@ using namespace std;
 
 // #define MAX(A,B) ((A)>(B)?(A):(B))
 
-struct rgbColor {
+struct rgbColorDbl {
+    union {
+        double chan[RGB_SZ];
+        struct {
+            double r;
+            double g;
+            double b;
+        } ch;
+    };
+};
+
+
+struct rgbColor {  // TODO: maybe change to explicit rgbColorU8
     union {
         uint8_t chan[RGB888_SZ];
         struct {
