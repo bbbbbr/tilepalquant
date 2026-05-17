@@ -20,9 +20,6 @@ using namespace std;
 #define DITHER_HEIGHT        2
 #define DITHER_PATTERN_AR_SZ (DITHER_WIDTH * DITHER_HEIGHT)
 
-#define BITS_PER_CHANNEL_MIN 2
-#define BITS_PER_CHANNEL_MAX 8
-
 #define RGBA_ALPHA_MAX       255
 
 #define RGBA_RED    0
@@ -106,6 +103,21 @@ struct quantOptions {
 };
 
 
+#define TILE_WIDTH_MIN             1
+#define TILE_WIDTH_MAX             32
+#define TILE_HEIGHT_MIN            1
+#define TILE_HEIGHT_MAX            32
+#define NUM_PALETTES_MIN           1
+#define NUM_PALETTES_MAX           16  // TODO: Could this be raised?
+#define COLORS_PER_PALETTE_MIN     2
+#define COLORS_PER_PALETTE_MAX     256
+#define BITS_PER_CHANNEL_MIN       2
+#define BITS_PER_CHANNEL_MAX       8
+#define FRACTION_OF_PIXELS_MIN     0.01
+#define FRACTION_OF_PIXELS_MAX     10.0
+#define DITHER_WEIGHT_MIN          0.01
+#define DITHER_WEIGHT_MAX          1.0
+
 // Option defaults
 #define TILE_WIDTH_DEFAULT         8
 #define TILE_HEIGHT_DEFAULT        8
@@ -113,7 +125,7 @@ struct quantOptions {
 #define COLORS_PER_PALETTE_DEFAULT 4
 #define BITS_PER_CHANNEL_DEFAULT   5
 
-#define FRACTION_OF_PIXELS_DEFAULT    0.50
+#define FRACTION_OF_PIXELS_DEFAULT    0.1
 #define COLOR_ZERO_BEHAVIOUR_DEFAULT  Opts::indexZeroUnique
 // TODO: with C++20 designated inits could be used
 #define COLOR_ZERO_RGB_DEFAULT        {RGBCOL(0, 0, 0)}

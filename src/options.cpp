@@ -94,12 +94,12 @@ static void showHelp(void) {
         "-o <filename>         Ouput file (if not used then default is <png file>_out.png)\n"
         "-h                    Show this help output\n"
         "-v                    Verbose output\n"
-        "-tile_w <width>       Width  of tiles in pixels (default: 8)\n"
-        "-tile_h <height>      Height of tiles in pixels (default: 8)\n"
-        "-num_pals <num>       Number of palettes (default: 8)\n"
-        "-cols_per_pal <num>   Number of colors per palette (default: 4)\n"
-        "-bits_per_chan <num>  Bits per RGB color channel (default: 5, meaning RGB555)\n"
-        "-fract_of_px <num>    TODO\n"
+        "-tile_w <width>       Width  of tiles in pixels    (default: 8, range: 1-32)\n"
+        "-tile_h <height>      Height of tiles in pixels    (default: 8, range: 1-32)\n"
+        "-num_pals <num>       Number of palettes           (default: 8, range: 1-16)\n"
+        "-cols_per_pal <num>   Number of colors per palette (default: 4, range: 2-256)\n"
+        "-bits_per_chan <num>  Bits per RGB color channel   (default: 5, range: 2-8)\n"
+        "-fract_of_px <num>                                 (default: 0.1, range: 0.01- 10)\n"
         "-col_zero <mode>      Color index zero behavior (default: unique)\n"
         "                        unique:\n"
         "                        shared: (may specify -shared_col)\n"
@@ -108,7 +108,7 @@ static void showHelp(void) {
         "-dither <mode>       Dithering (off, fast, slow) (default: off)\n"
         "-dither_pat <pat>    Dither pattern (default: diag4)\n"
         "                        (diag4, horiz4, vert4, diag2, horiz2, vert2)\n"
-        "-dither_wt <num>     Dither weight (range: TODO) (default: 0.5)\n"
+        "-dither_wt <num>     Dither weight                  (default: 0.5, range: 0.01-1))\n"
         "-use_metafile        Read extra options from file <inputfile>.meta (file missing not an error)\n"
         "-rand_seed <num>     Specify random number seed for conversion (default: 0)\n"
         "-rand_on             Use a random value for conversion instead of fixed seed,\n"
@@ -173,16 +173,20 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
         }
         else if (!strcmp(argv[i], "-tile_w")) {
             options->tileWidth = atoi(argv[++i]);
+            options->tileWidth = CLAMP(options->tileWidth, (unsigned int)TILE_WIDTH_MIN, (unsigned int)TILE_WIDTH_MAX);
         }
         else if (!strcmp(argv[i], "-tile_h")) {
             options->tileHeight = atoi(argv[++i]);
+            options->tileHeight = CLAMP(options->tileHeight, (unsigned int)TILE_HEIGHT_MIN, (unsigned int)TILE_HEIGHT_MAX);
         }
 
         else if (!strcmp(argv[i], "-num_pals")) {
             options->numPalettes = atoi(argv[++i]);
+            options->numPalettes = CLAMP(options->numPalettes, (unsigned int)NUM_PALETTES_MIN, (unsigned int)NUM_PALETTES_MAX);
         }
         else if (!strcmp(argv[i], "-cols_per_pal")) {
             options->colorsPerPalette = atoi(argv[++i]);
+            options->colorsPerPalette = CLAMP(options->colorsPerPalette, (unsigned int)COLORS_PER_PALETTE_MIN, (unsigned int)COLORS_PER_PALETTE_MAX);
         }
         else if (!strcmp(argv[i], "-bits_per_chan")) {
             options->bitsPerChannel = atoi(argv[++i]);
@@ -190,6 +194,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
         }
         else if (!strcmp(argv[i], "-fract_of_px")) {
             options->fractionOfPixels = atof(argv[++i]);
+            options->fractionOfPixels = CLAMP(options->fractionOfPixels, (float)FRACTION_OF_PIXELS_MIN, (float)FRACTION_OF_PIXELS_MAX);
         }
 
         else if (!strcmp(argv[i], "-col_zero")) {
@@ -236,6 +241,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
 
         else if (!strcmp(argv[i], "-dither_wt")) {
             options->ditherWeight = atof(argv[++i]);
+            options->ditherWeight = CLAMP(options->ditherWeight, (float)DITHER_WEIGHT_MIN, (float)DITHER_WEIGHT_MAX);
         }
 
         else if(!strcmp(argv[i], "-use_metafile")) {
