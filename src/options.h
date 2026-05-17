@@ -78,9 +78,9 @@ struct quantOptions {
     float         fractionOfPixels;
 
     unsigned int  colorZeroBehaviour;
-    rgbColor      colorZeroValue;
-    rgbColor      sharedColorInput;
-    rgbColor      transparentColorInput;
+    rgbColor    colorZeroValue;
+    rgbColor    sharedColorInput;
+    rgbColor    transparentColorInput;
 
 
     unsigned int  ditherMethod;

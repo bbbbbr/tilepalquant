@@ -9,10 +9,15 @@ using namespace std;
 #define RGBA32_SZ   (RGBA8888_SZ) // RGBA 8:8:8:8 is 4 bytes per pixel
 
 // ABGR:8888 (in 8 bit array format, OR RGBA:32 packed int on little-endian systems when accessed as bytes)
-#define ABGR8_R              3 // Alpha channel is [3]
-#define ABGR8_G              2 // Alpha channel in [2]
-#define ABGR8_B              1 // Alpha channel in [1]
+#define ABGR8_R              3 //
+#define ABGR8_G              2 //
+#define ABGR8_B              1 //
 #define ABGR8_ALPHA          0 // Alpha channel in [0]
+
+// RGB:888 (in 8 bit array format)
+#define RGB_R              0 //
+#define RGB_G              1 //
+#define RGB_B              2 //
 
 // RGBA:8888 (in 8 bit array format)
 #define RGBA8_R              0 // Alpha channel is [0]
@@ -28,7 +33,7 @@ using namespace std;
 
 // #define MAX(A,B) ((A)>(B)?(A):(B))
 
-struct rgbColorDbl {
+struct rgbColor {
     union {
         double chan[RGB_SZ];
         struct {
@@ -39,29 +44,6 @@ struct rgbColorDbl {
     };
 };
 
-
-struct rgbColor {  // TODO: maybe change to explicit rgbColorU8
-    union {
-        uint8_t chan[RGB888_SZ];
-        struct {
-            uint8_t r;
-            uint8_t g;
-            uint8_t b;
-        } ch;
-    };
-};
-
-struct rgbaColor {
-    union {
-        uint8_t chan[RGB888_SZ];
-        struct {
-            uint8_t r;
-            uint8_t g;
-            uint8_t b;
-            uint8_t alpha;
-        } ch;
-    };
-};
 
 struct Image {
     vector< unsigned char > data; //data in indexed format

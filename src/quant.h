@@ -9,6 +9,11 @@
 
 using namespace std;
 
-// vector tileSet
+struct Candidate {
+    size_t    colorIndex;
+    double    colorDistance;
+    rgbColor  comparedColor;
+    double    brightness;
+};
 
 int quantizeImage(quantOptions & quantizationOptions, Image & image);

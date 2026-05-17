@@ -23,7 +23,7 @@ struct pixelEntry {
 // };
 struct Tile
 {
-    vector <rgbColor>   colors;
+    vector <rgbColor>   colors;  // GOING TO HAVE TO MAKE ALL COLORS DOUBLES I THINK
     vector <size_t>     counts;
     vector <pixelEntry> pixels;
 };
