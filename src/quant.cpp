@@ -13,7 +13,8 @@
 
 quantOptions options;
 
-
+static void updateProgress(float progress);
+static void updateQuantizedImage(Image & image);
 static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bool doSorting);
 
 static void movePalettesCloser(vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, pixelEntry & pixel, float alpha);
@@ -87,7 +88,25 @@ static void   printPalettes(const vector <vector <rgbColor>> & palettes);
                             updateProgress(100);
                             postMessage({ action: Action.DoneQuantization });
                         };
+
 */
+// function updateProgress(progress) {
+static void updateProgress(float progress) {
+    // postMessage({ action: Action.UpdateProgress, progress: progress });
+    const int prog_bar_size = 20;
+    const int prog_reached = (int)((float)(prog_bar_size / 100.0) * progress);
+    if (options.verbose) printf("* Progress: %%%0.0f |", progress);
+    int i = 1;
+    while (i++ < prog_reached)  printf("#");
+    while (i++ < prog_bar_size) printf("-");
+    printf("|\n");
+
+}
+
+static void updateQuantizedImage(Image & image) {
+//    postMessage({ action: Action.UpdateQuantizedImage, imageData: image });
+    if (options.verbose) printf("* Shim: UpdateQuantizedImage() - no preview of intermediate image\n");
+}
 
 // function updatePalettes(palettes, doSorting) {
 static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bool doSorting) {
@@ -113,6 +132,7 @@ static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bo
         pal = sortPalettes(pal, startIndex);
     }
 /*
+    // TODO: Postmessage update handling... (is it needed?)
     postMessage({
         action: Action.UpdatePalettes,
         palettes: pal,
@@ -234,11 +254,9 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
          (options.colorZeroBehaviour == Opts::indexZeroTranspFromTransp)) {
         endIndex -= 1;
     }
-    // updateProgress(prog[0] / options.numPalettes);
-    if (options.verbose) printf("Progress: %0.2f\n", (float)prog[0] / (float)options.numPalettes);
+    updateProgress(prog[0] / options.numPalettes);
     updatePalettes(palettes, false);
-// TODO TEST DEBUG
-updatePalettes(palettes, true);
+
     // @ CURRENT LOC HERE
     /*
     if (showProgress)
