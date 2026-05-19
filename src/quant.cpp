@@ -18,9 +18,9 @@ static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bo
 
 static void movePalettesCloser(vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, pixelEntry & pixel, float alpha);
 
-static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> palettes, const size_t startIndex);
+static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> palettes, const int startIndex);
 
-static void reverse(vector <size_t> & a, size_t left, size_t right);
+static void reverse(vector <int> & a, int left, int right);
 static double toLinear(double x);
 static void toLinearColor(rgbColor & color);
 static double toSrgb(double x);
@@ -31,16 +31,16 @@ static Candidate getClosestColorDither(const vector <rgbColor> & palette, const 
 static double colorDistance(const rgbColor & a, const rgbColor & b);
 static double paletteDistance(const vector <rgbColor> & palette, const Tile & tile);
 static double paletteDistanceDither(const vector <rgbColor> & palette, const Tile & tile);
-static size_t getClosestPaletteIndex(const vector <vector <rgbColor>> & palettes, const Tile & tile);
+static int getClosestPaletteIndex(const vector <vector <rgbColor>> & palettes, const Tile & tile);
 static Candidate closestPaletteDistance(const vector <vector <rgbColor>> & palettes, const Tile & tile);
-static size_t getClosestPaletteIndexDither(const vector <vector <rgbColor>> & palettes, const Tile & tile);
+static int getClosestPaletteIndexDither(const vector <vector <rgbColor>> & palettes, const Tile & tile);
 static Candidate closestPaletteDistanceDither(const vector <vector <rgbColor>> & palettes, const Tile & tile);
 
 // Truncate value to N bits
 static rgbColor getColor(Image & image, unsigned int x, unsigned int y);
 static bool isPixelTransparent(Image & image, unsigned int x, unsigned int y);
 static bool isColorTransparent(rgbColor & color);
-static Tile extractTile(Image & image, unsigned int startX, unsigned int startY, size_t tile_id);
+static Tile extractTile(Image & image, unsigned int startX, unsigned int startY, int tile_id);
 static void extractTiles(Image & image, vector <Tile> & tiles);
 static bool equalColors(rgbColor & c1, rgbColor & c2);
 static void extractAllPixels(vector <Tile> & tiles, vector <pixelEntry> & pixels);
@@ -59,13 +59,13 @@ static void toNbitColor(rgbColor & color, unsigned int n);
 
 static void moveColorCloser(rgbColor & color, rgbColor & pixelColor, float alpha);
 
-static size_t maxIndexDbl(vector <double> values);
-static size_t minIndexDbl(vector <double> values);
+static int maxIndexDbl(vector <double> values);
+static int minIndexDbl(vector <double> values);
 
 // Not part of original JS version
 static Tile & getParentTile(vector <Tile> & tiles, const pixelEntry & pixel);
 static double randRange0to1(void);
-static size_t indexOf(const vector <size_t> & vec, size_t matchValue);
+static int    indexOf(const vector <int> & vec, int matchValue);
 static void   printPalettes(const vector <vector <rgbColor>> & palettes);
 
 /*
@@ -95,7 +95,7 @@ static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bo
 
     if (options.verbose) printf("updatePalettes()\n");
 
-    size_t startIndex = 0;
+    int startIndex = 0;
     if ((options.colorZeroBehaviour == Opts::indexZeroTranspFromColor) ||
         (options.colorZeroBehaviour == Opts::indexZeroTranspFromTransp)) {
         startIndex = 1;
@@ -168,7 +168,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     }
     else {
         if (options.verbose) printf("No Dither\n");
-        for (size_t i = 0; i < image.data.size(); i++) {
+        for (int i = 0; i < (int)image.data.size(); i++) {
             // TODO: Seems to expect each item in the array to be an RGB (OR RGBA ?) entry
             // If RGBA, why quantizing the Alpha channel?
             reducedImageData.data[i] = toNbitU8(image.data[i], options.bitsPerChannel);
@@ -198,7 +198,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     randomShuffle.init(pixels.size());
 
     const bool showProgress = true;
-    size_t iterations = (size_t)(options.fractionOfPixels * (float)pixels.size());  // TODO: Wonder if this could be an option knob for quality/speed tradeoff
+    int iterations = (int)(options.fractionOfPixels * (float)pixels.size());  // TODO: Wonder if this could be an option knob for quality/speed tradeoff
     float alpha = 0.3;
     float finalAlpha = 0.05;
 
@@ -215,7 +215,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
 
     const float minColorFactor = 0.5;
     const float minPaletteFactor = 0.5;
-    const size_t replaceIterations = 10;
+    const int replaceIterations = 10;
     const bool useMin = true;
     unsigned int prog[] = {25, 65, 90, 100};  // TODO: What are these doing?
     if (options.ditherMethod == Opts::ditherOff) {
@@ -225,11 +225,11 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     vector <vector <rgbColor>> palettes;
     colorQuantize1Color(tiles, pixels, randomShuffle, palettes);
 
-    size_t startIndex = 2;
+    int startIndex = 2;
     if (options.colorZeroBehaviour == Opts::indexZeroShared) {
         startIndex += 1;
     }
-    size_t endIndex = options.colorsPerPalette;
+    int endIndex = options.colorsPerPalette;
     if ((options.colorZeroBehaviour == Opts::indexZeroTranspFromColor) ||
          (options.colorZeroBehaviour == Opts::indexZeroTranspFromTransp)) {
         endIndex -= 1;
@@ -332,13 +332,13 @@ function reducePalettes(palettes, bitsPerChannel) {
 
 // function sortPalettes(palettes, startIndex) {
 // Note: Not passing palettes as a reference is intentional
-static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> palettes, const size_t startIndex) {
-    const size_t pairIterations = 2000;
-    const size_t tIterations = 10000;
-    const size_t paletteIterations = 100000;
-    const size_t upWeight = 2;
-    const size_t numPalettes = palettes.size();
-    const size_t numColors = palettes[0].size();
+static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> palettes, const int startIndex) {
+    const int pairIterations = 2000;
+    const int tIterations = 10000;
+    const int paletteIterations = 100000;
+    const int upWeight = 2;
+    const int numPalettes = palettes.size();
+    const int numColors = palettes[0].size();
 
     if ((numColors == 2) && (startIndex == 1)) {
         return palettes;
@@ -357,30 +357,30 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     vector <vector <double>> paletteDist (numPalettes + 2,  vector <double>(numPalettes + 2, 0.0) );
 
     // colorIndex[p1][p2][i] stores the index of the closest color in p2 from color index i in p1
-    // Creates a 3D array initialized with zeros // TODO: of type size_t indexes probably
+    // Creates a 3D array initialized with zeros // TODO: of type int indexes probably
     // const colorIndex = zeros3(numPalettes, numPalettes, numColors);
-    vector <vector <vector <size_t>>> colorIndex (numPalettes,  vector <vector <size_t>>(numPalettes, vector <size_t>(numColors,0) ) );
+    vector <vector <vector <int>>> colorIndex (numPalettes,  vector <vector <int>>(numPalettes, vector <int>(numColors,0) ) );
 
-    for (size_t i = 0; i < numPalettes; i++) {
-        for (size_t j = 0; j < numPalettes; j++) {
-            for (size_t k = 0; k < numColors; k++) {
+    for (int i = 0; i < numPalettes; i++) {
+        for (int j = 0; j < numPalettes; j++) {
+            for (int k = 0; k < numColors; k++) {
                 colorIndex[i][j][k] = k;
             }
         }
     }
-    for (size_t p1 = 0; p1 < numPalettes - 1; p1++) {
-        for (size_t p2 = p1 + 1; p2 < numPalettes; p2++) {
+    for (int p1 = 0; p1 < numPalettes - 1; p1++) {
+        for (int p2 = p1 + 1; p2 < numPalettes; p2++) {
 
             // index is a 1D array copied from colorIndex[n][n][..here..]
-            vector <size_t> index = colorIndex[p1][p2];
-            for (size_t iteration = 0; iteration < pairIterations; iteration++) {
+            vector <int> index = colorIndex[p1][p2];
+            for (int iteration = 0; iteration < pairIterations; iteration++) {
 
-                size_t i1 = startIndex + floor(randRange0to1() * (numColors - startIndex - 1));
-                size_t i2 = i1 + 1 + floor(randRange0to1() * (numColors - i1 - 1));
+                int i1 = startIndex + floor(randRange0to1() * (numColors - startIndex - 1));
+                int i2 = i1 + 1 + floor(randRange0to1() * (numColors - i1 - 1));
                 if (randRange0to1() < 0.5) {
                     // [i1, i2] = [i2, i1];
                     // Swap the two
-                    const size_t tmp = i1;
+                    const int tmp = i1;
                     i1 = i2;
                     i2 = tmp;
                 }
@@ -393,13 +393,13 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
                 if (swappedDist < straightDist) {
                     // [index[i1], index[i2]] = [index[i2], index[i1]];
                     // Swap the two
-                    const size_t tmp = index[i1];
+                    const int tmp = index[i1];
                     index[i1] = index[i2];
                     index[i2] = tmp;
                 }
             }
             double sum = 0;
-            for (size_t i = 0; i < numColors; i++) {
+            for (int i = 0; i < numColors; i++) {
                 const rgbColor p1i = palettes[p1][i];
                 const rgbColor p2i = palettes[p2][index[i]];
                 sum += colorDistance(p1i, p2i);
@@ -408,12 +408,12 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
             paletteDist[p2 + 1][p1 + 1] = sum;
         }
     }
-    for (size_t p1 = 1; p1 < numPalettes; p1++) {
-        for (size_t p2 = 0; p2 < p1; p2++) {
+    for (int p1 = 1; p1 < numPalettes; p1++) {
+        for (int p2 = 0; p2 < p1; p2++) {
             // index and revIndex are arrays of indexes found at [n][n] in 3D array colorIndex
-            const vector <size_t> index = colorIndex[p2][p1];
-            vector <size_t> revIndex = colorIndex[p1][p2];
-            for (size_t i = 0; i < numColors; i++) {
+            const vector <int> index = colorIndex[p2][p1];
+            vector <int> revIndex = colorIndex[p1][p2];
+            for (int i = 0; i < numColors; i++) {
                 // revIndex[i] = index.indexOf(i);
                 revIndex[i] = indexOf(index, i);  // TODO: VALIDATE MATCHES EXPECTED BEHAVIOR
             }
@@ -421,18 +421,18 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     }
 
     // const palIndex = [];
-    vector <size_t> palIndex;
-    for (size_t i = 0; i < numPalettes + 2; i++) {
+    vector <int> palIndex;
+    for (int i = 0; i < numPalettes + 2; i++) {
         palIndex.push_back(i);
     }
     if (numPalettes > 2) {
-        for (size_t iteration = 0; iteration < paletteIterations; iteration++) {
-            const size_t index1 = MAX((size_t)1, (size_t)floor(randRange0to1() * numPalettes));
-            const size_t index2 = MIN(numPalettes, index1 + (size_t)1 + (size_t)floor(randRange0to1() * numPalettes));
-            const size_t i1b = palIndex[index1 - 1];
-            const size_t i1 = palIndex[index1];
-            const size_t i2 = palIndex[index2];
-            const size_t i2b = palIndex[index2 + 1];
+        for (int iteration = 0; iteration < paletteIterations; iteration++) {
+            const int index1 = MAX((int)1, (int)floor(randRange0to1() * numPalettes));
+            const int index2 = MIN(numPalettes, index1 + (int)1 + (int)floor(randRange0to1() * numPalettes));
+            const int i1b = palIndex[index1 - 1];
+            const int i1 = palIndex[index1];
+            const int i2 = palIndex[index2];
+            const int i2b = palIndex[index2 + 1];
             const double straightDist = paletteDist[i1b][i1] + paletteDist[i2][i2b];
             const double swappedDist = paletteDist[i1b][i2] + paletteDist[i1][i2b];
             if (swappedDist < straightDist) {
@@ -443,8 +443,8 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     // const pal1 = palettes[palIndex[1] - 1];
     // const p1Index = [];
     vector <rgbColor> pal1 = palettes[palIndex[1] - 1];
-    vector <size_t> p1Index;
-    for (size_t i = 0; i < numColors + 2; i++) {
+    vector <int> p1Index;
+    for (int i = 0; i < numColors + 2; i++) {
         p1Index.push_back(i);
     }
 
@@ -452,20 +452,20 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     // const p1Dist = zeros2(numColors + 2, numColors + 2);
     vector <vector <double>> p1Dist (numColors + 2,  vector <double>(numColors + 2, 0.0) );
 
-    for (size_t i = 1; i <= numColors; i++) {
-        for (size_t j = 1; j <= numColors; j++) {
+    for (int i = 1; i <= numColors; i++) {
+        for (int j = 1; j <= numColors; j++) {
             p1Dist[i][j] = colorDistance(pal1[i - 1], pal1[j - 1]);
         }
     }
 
     if (numColors > 2) {
-        for (size_t iteration = 0; iteration < paletteIterations; iteration++) {
-            const size_t index1 =max((size_t)1 + startIndex, (size_t)floor(randRange0to1() * numColors));
-            const size_t index2 =min(numColors, index1 + (size_t)1 + (size_t)floor(randRange0to1() * numColors));
-            const size_t i1b = p1Index[index1 - 1];
-            const size_t i1 = p1Index[index1];
-            const size_t i2 = p1Index[index2];
-            const size_t i2b = p1Index[index2 + 1];
+        for (int iteration = 0; iteration < paletteIterations; iteration++) {
+            const int index1 =max((int)1 + startIndex, (int)floor(randRange0to1() * numColors));
+            const int index2 =min(numColors, index1 + (int)1 + (int)floor(randRange0to1() * numColors));
+            const int i1b = p1Index[index1 - 1];
+            const int i1 = p1Index[index1];
+            const int i2 = p1Index[index2];
+            const int i2b = p1Index[index2 + 1];
             const double straightDist = p1Dist[i1b][i1] + p1Dist[i2][i2b];
             const double swappedDist = p1Dist[i1b][i2] + p1Dist[i1][i2b];
             if (swappedDist < straightDist) {
@@ -477,42 +477,39 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     // Creates a 2D array initialized with zeros // TODO: of type double probably
     // const pIndex = zeros2(numPalettes, numColors);
     vector <vector <double>> pIndex (numPalettes,  vector <double>(numColors, 0.0) );
-    for (size_t i = 1; i <= numColors; i++) {
-        for (size_t j = 1; j <= numColors; j++) {
+    for (int i = 1; i <= numColors; i++) {
+        for (int j = 1; j <= numColors; j++) {
             pIndex[i][j] = p1Index[i + 1] - 1;
         }
     }
 
-    for (size_t i = 1; i < numPalettes; i++) {
-        for (size_t j = 0; j < numColors; j++) {
-            const size_t p1 = palIndex[i] - 1;
-            const size_t p2 = palIndex[i + 1] - 1;
+    for (int i = 1; i < numPalettes; i++) {
+        for (int j = 0; j < numColors; j++) {
+            const int p1 = palIndex[i] - 1;
+            const int p2 = palIndex[i + 1] - 1;
             pIndex[i][j] = colorIndex[p1][p2][pIndex[i - 1][j]];
         }
     }
     if (numColors >= 4) {
-        for (size_t i = 1; i < numPalettes; i++) {
-            const size_t p1 = palIndex[i] - 1;
-            const size_t p2 = palIndex[i + 1] - 1;
-            size_t iteration = 0;
+        for (int i = 1; i < numPalettes; i++) {
+            const int p1 = palIndex[i] - 1;
+            const int p2 = palIndex[i + 1] - 1;
+            int iteration = 0;
             while (iteration < tIterations) {
-                const size_t index1 = MAX(startIndex, (size_t)floor(randRange0to1() * numColors));
-                const size_t index2 = MAX(startIndex, (size_t)floor(randRange0to1() * numColors));
+                const int index1 = MAX(startIndex, (int)floor(randRange0to1() * numColors));
+                const int index2 = MAX(startIndex, (int)floor(randRange0to1() * numColors));
                 if (index1 == index2)
                     continue;
-                const size_t up1 = pIndex[i - 1][index1];
-                const size_t i1 = pIndex[i][index1];
-                const size_t left1 = pIndex[i][index1 - 1];
-                const size_t right1 = pIndex[i][index1 + 1];
-                const size_t up2 = pIndex[i - 1][index2];
-                const size_t i2 = pIndex[i][index2];
-                const size_t left2 = pIndex[i][index2 - 1];
-                const size_t right2 = pIndex[i][index2 + 1];
+                const int up1 = pIndex[i - 1][index1];
+                const int i1 = pIndex[i][index1];
+                const int left1 = pIndex[i][index1 - 1];
+                const int right1 = pIndex[i][index1 + 1];
+                const int up2 = pIndex[i - 1][index2];
+                const int i2 = pIndex[i][index2];
+                const int left2 = pIndex[i][index2 - 1];
+                const int right2 = pIndex[i][index2 + 1];
                 double straightDist = upWeight *
                     colorDistance(palettes[p2][i1], palettes[p1][up1]);
-// TODO: IMORTANT: FIXME: Probably need to switch to ints for a lot of this func
-// src/quant.cpp:513:27: warning: comparison of unsigned expression in ‘>= 0’ is always true [-Wtype-limits]
-  // 513 |                 if (left1 >= 0)
                 if (left1 >= 0)
                     straightDist += colorDistance(palettes[p2][i1], palettes[p2][left1]);
                 if (right1 < numColors)
@@ -543,7 +540,7 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
                     //     pIndex[i][index1],
                     // ];
                     // swap
-                    const size_t tmp = pIndex[i][index1];
+                    const int tmp = pIndex[i][index1];
                     pIndex[i][index1] = pIndex[i][index2];
                     pIndex[i][index2] = tmp;
                 }
@@ -553,11 +550,11 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     }
     // const pals = [];
     vector <vector <rgbColor>> pals;
-    for (size_t i = 0; i < numPalettes; i++) {
-        const size_t p2 = palIndex[i + 1] - 1;
+    for (int i = 0; i < numPalettes; i++) {
+        const int p2 = palIndex[i + 1] - 1;
         // const pal = [];
         vector <rgbColor> pal;
-        for (size_t j = 0; j < numColors; j++) {
+        for (int j = 0; j < numColors; j++) {
             pal.push_back(palettes[p2][pIndex[i][j]]);
         }
         pals.push_back(pal);
@@ -600,12 +597,12 @@ function zeros3(len1, len2, len3) {
 
 */
 // function reverse(a, left, right) {
-static void reverse(vector <size_t> & a, size_t left, size_t right) {
+static void reverse(vector <int> & a, int left, int right) {
     const double middle = (left + right) / 2.0;
     while ((double)left < middle) {
         // [a[left], a[right]] = [a[right], a[left]];  // swap array items
         // TODO: does this need bounds checking?
-        const size_t tmp = a[left];
+        const int tmp = a[left];
         a[left] = a[right];
         a[right] = tmp;
         left++;
@@ -857,9 +854,9 @@ float meanSquareErrorDither(palettes, tiles) {
 
 // function getClosestColor(palette, color) {
 static Candidate getClosestColor(const vector <rgbColor> & palette, const rgbColor & color) {
-    int minIndex = palette.size() - 1;
+    int minIndex = (int)palette.size() - 1;
     double minDist = colorDistance(palette[minIndex], color);
-    for (int i = palette.size() - 2; i >= 0; i--) {
+    for (int i = (int)palette.size() - 2; i >= 0; i--) {
         const double dist = colorDistance(palette[i], color);
         if (dist < minDist) {
             minIndex = i;
@@ -867,7 +864,7 @@ static Candidate getClosestColor(const vector <rgbColor> & palette, const rgbCol
         }
     }
     // return [minIndex, minDist];
-    const Candidate result = {(size_t)minIndex, minDist, /* Next two are shims for {color, bright} to avoid warning */ {0,0,0}, 0};
+    const Candidate result = {(int)minIndex, minDist, /* Next two are shims for {color, bright} to avoid warning */ {0,0,0}, 0};
     return result;
 }
 
@@ -892,7 +889,7 @@ static Candidate getClosestColorDither(const vector <rgbColor> & palette, const 
         clampColor(c, 0, 255 * 255);
         toSrgbColor(c);
         Candidate result = getClosestColor(palette, c);
-        size_t minColorIndex = result.colorIndex;
+        int minColorIndex = result.colorIndex;
         const rgbColor minColor = palette[minColorIndex];
 
         result.comparedColor = c;
@@ -917,7 +914,7 @@ static Candidate getClosestColorDither(const vector <rgbColor> & palette, const 
             }
         }
     }
-    const size_t index = options.ditherPattern[pixel.x & 1][pixel.y & 1];
+    const int index = options.ditherPattern[pixel.x & 1][pixel.y & 1];
     // return [
     //     candidates[index].colorIndex,
     //     candidates[index].colorDistance,
@@ -935,8 +932,8 @@ static double paletteDistance(const vector <rgbColor> & palette, const Tile & ti
     double sum = 0;
     // TODO: Why making copies of these instead of just using the source ones?
     // const vector <rgbColor> colors = tile.colors;
-    // const vector <size_t>   counts = tile.counts;
-    for (size_t i = 0; i < tile.colors.size(); i++) {
+    // const vector <int>   counts = tile.counts;
+    for (int i = 0; i < (int)tile.colors.size(); i++) {
         const Candidate result = getClosestColor(palette, tile.colors[i]);
         double minDist = result.colorDistance;
         sum += tile.counts[i] * minDist;
@@ -957,7 +954,7 @@ static double paletteDistanceDither(const vector <rgbColor> & palette, const Til
 }
 
 // function getClosestPaletteIndex(palettes, tile) {
-static size_t getClosestPaletteIndex(const vector <vector <rgbColor>> & palettes, const Tile & tile) {
+static int getClosestPaletteIndex(const vector <vector <rgbColor>> & palettes, const Tile & tile) {
     if (palettes.size() == 1)
         return 0;
     // const distances = palettes.map((palette) => paletteDistance(palette, tile));
@@ -975,7 +972,7 @@ static Candidate closestPaletteDistance(const vector <vector <rgbColor>> & palet
     for (const vector <rgbColor> & palette : palettes) {
         distances.push_back(paletteDistance(palette, tile));
     }
-    const size_t index = minIndexDbl(distances);
+    const int index = minIndexDbl(distances);
     // TODO: This returns a uint and a double, more or less a candidate
     //       closestPal gets used as an alias for this, then used to call this. the return needs to
     // return [index, distances[index]];
@@ -984,7 +981,7 @@ static Candidate closestPaletteDistance(const vector <vector <rgbColor>> & palet
 }
 
 // function getClosestPaletteIndexDither(palettes, tile) {
-static size_t getClosestPaletteIndexDither(const vector <vector <rgbColor>> & palettes, const Tile & tile) {
+static int getClosestPaletteIndexDither(const vector <vector <rgbColor>> & palettes, const Tile & tile) {
     if (palettes.size() == 1)
         return 0;
     // const distances = palettes.map((palette) => paletteDistanceDither(palette, tile));
@@ -1002,7 +999,7 @@ static Candidate closestPaletteDistanceDither(const vector <vector <rgbColor>> &
     for (const vector <rgbColor> & palette : palettes) {
         distances.push_back(paletteDistanceDither(palette, tile));
     }
-    const size_t index = minIndexDbl(distances);
+    const int index = minIndexDbl(distances);
     // TODO: This returns a uint and a double, more or less a candidate
     //       closestPal gets used as an alias for this, then used to call this. the return needs to
     // return [index, distances[index]];
@@ -1024,7 +1021,7 @@ static rgbColor getColor(Image & image, unsigned int x, unsigned int y) {
 }
 
 // extractTile(image, startX, startY) {
-static Tile extractTile(Image & image, unsigned int startX, unsigned int startY, size_t tile_id) {
+static Tile extractTile(Image & image, unsigned int startX, unsigned int startY, int tile_id) {
     // const { tileWidth, tileHeight, colorZeroBehaviour, colorZeroValue } = quantizationOptions;
     // See tile.h
     // const tile = {
@@ -1054,7 +1051,7 @@ static Tile extractTile(Image & image, unsigned int startX, unsigned int startY,
             // Replaces: colorIndex = tile.colors.findIndex((c) => equalColors(c, color));
             int colorIndex;
             bool foundMatch = false;
-            for (size_t c = 0; c < tile.colors.size(); c++) {
+            for (int c = 0; c < (int)tile.colors.size(); c++) {
                if (equalColors(tile.colors[c], color)) { colorIndex = c; foundMatch = true; break;}
             }
             if (foundMatch) {
@@ -1085,9 +1082,9 @@ bool isColorTransparent(rgbColor & color) {
 
 // function extractTiles(image) {
 static void extractTiles(Image & image, vector <Tile> & tiles) {
-    size_t totalPixels = 0;
-    size_t tileCount = 0;
-    size_t tile_id = 0;
+    int totalPixels = 0;
+    int tileCount = 0;
+    int tile_id = 0;
     for (unsigned int y = 0; y < image.height; y += options.tileHeight) {
         for (unsigned int x = 0; x < image.width; x += options.tileWidth) {
             const Tile tile = extractTile(image, x, y, tile_id);
@@ -1102,7 +1099,7 @@ static void extractTiles(Image & image, vector <Tile> & tiles) {
             tiles.push_back(tile);
             tile_id++;
             // These are just for stats collecting in the original version
-            totalPixels += tile.pixels.size();
+            totalPixels += (int)tile.pixels.size();
             tileCount++;
         }
     }
@@ -1110,7 +1107,7 @@ static void extractTiles(Image & image, vector <Tile> & tiles) {
 
     // TODO: DEBUG TEST
         if (options.verbose) printf("****** Num Tiles = %zu ******* \n", tiles.size());
-        // for (size_t i = 0; i < tiles.size(); i++) {
+        // for (int i = 0; i < (int)tiles.size(); i++) {
         //     if (tiles[i].pixels.size() > 0) {
         //         if (options.verbose) printf("-> Saved Tile [%4zu]:  colors.sz=%3zu, pixels.sz = %3zu, tilenum=%zu vs px-tilenum=%zu\n",
         //                                     i, tiles[i].colors.size(), tiles[i].pixels.size(),
@@ -1264,7 +1261,7 @@ function quantizeTiles(palettes, image, useDither) {
 
 // function colorQuantize1Color(tiles, pixels, randomShuffle) {
 static void colorQuantize1Color(vector <Tile> & tiles, vector <pixelEntry> & pixels, RandomShuffle & randomShuffle, vector <vector <rgbColor>> & palettes) {
-    size_t iterations = options.fractionOfPixels * pixels.size();
+    int iterations = options.fractionOfPixels * (int)pixels.size();
     float  alpha = 0.3;
     if (options.ditherMethod == Opts::ditherSlow) {
         iterations /= 5;
@@ -1309,7 +1306,7 @@ static void colorQuantize1Color(vector <Tile> & tiles, vector <pixelEntry> & pix
 
     for (unsigned int  numPalettes = 2; numPalettes <= options.numPalettes; numPalettes++) {
         palettes.push_back(palettes[splitIndex]);
-        for (size_t iteration = 0; iteration < iterations; iteration++) {
+        for (int iteration = 0; iteration < iterations; iteration++) {
             const pixelEntry nextPixel = pixels[randomShuffle.next()];
             movePalettesCloser(palettes, tiles, nextPixel, alpha);
         }
@@ -1319,7 +1316,7 @@ static void colorQuantize1Color(vector <Tile> & tiles, vector <pixelEntry> & pix
         for (const Tile & tile : tiles) {
             // [palIndex, distance]
             const Candidate result = closestPaletteDistance(palettes, tile);
-            const size_t palIndex = result.colorIndex;
+            const int palIndex = result.colorIndex;
             paletteDistances[palIndex] += result.colorDistance;
         }
         splitIndex = maxIndexDbl(paletteDistances);
@@ -1493,9 +1490,9 @@ static void moveColorCloser(rgbColor & color, rgbColor & pixelColor, float alpha
     color.ch.b = ((1 - alpha) * color.ch.b) + (alpha * pixelColor.ch.b);
 }
 
-static size_t maxIndexDbl(vector <double> values) {
-    size_t maxI = 0;
-    for (size_t i = 1; i < values.size(); i++) {
+static int maxIndexDbl(vector <double> values) {
+    int maxI = 0;
+    for (int i = 1; i < (int)values.size(); i++) {
         if (values[i] > values[maxI]) {
             maxI = i;
         }
@@ -1507,9 +1504,9 @@ static size_t maxIndexDbl(vector <double> values) {
 // function minIndex(values) {
 // Called with vector <unsigned int> and vector <rgbColor> (aka, palette)
 // This one is for unsigned int  // TODO: do this the C++ way
-static size_t minIndexDbl(vector <double> values) {
-    size_t minI = 0;
-    for (size_t i = 1; i < values.size(); i++) {
+static int minIndexDbl(vector <double> values) {
+    int minI = 0;
+    for (int i = 1; i < (int)values.size(); i++) {
         if (values[i] < values[minI]) {
             minI = i;
         }
@@ -1527,22 +1524,21 @@ static double randRange0to1(void) {
     return (   (double)rand() / ((double)(RAND_MAX) + (double)(1)));
 }
 
-// The JS version of this returns -1, but preferred types have been size_t
+// The JS version of this returns -1, but preferred types have been int
 // Unclear if designed behavior is relying on -1 so far
-static size_t indexOf(const vector <size_t> & vec, size_t matchValue) {
-    for (size_t index = 0; index < vec.size(); index++) {
+static int indexOf(const vector <int> & vec, int matchValue) {
+    for (int index = 0; index < (int)vec.size(); index++) {
         if (vec[index] == matchValue) return index;
     }
     return 0;  // TODO: May need to switch to int and return -1 to signal failure (or some other method that works with expectations in the code)
 }
 
-
 static void printPalettes(const vector <vector <rgbColor>> & palettes) {
-    printf("Num Palettes: %zu\n", palettes.size());
-    for (size_t palId = 0; palId < palettes.size(); palId++) {
-        printf("--> Palette [%zu] Size: %zu \n", palId, palettes[palId].size());
-        for (size_t colorId = 0; colorId < palettes[palId].size(); colorId++) {
-            printf("  - Pal Color[%zu][%zu] = r:%0.2f, g:%0.2f, b:%0.2f\n",
+    printf("Num Palettes: %d\n", (int)palettes.size());
+    for (int palId = 0; palId < (int)palettes.size(); palId++) {
+        printf("--> Palette [%d] Size: %d \n", palId, (int)palettes[palId].size());
+        for (int colorId = 0; colorId < (int)palettes[palId].size(); colorId++) {
+            printf("  - Pal Color[%d][%d] = r:%0.2f, g:%0.2f, b:%0.2f\n",
                     palId, colorId, palettes[palId][colorId].ch.r, palettes[palId][colorId].ch.g, palettes[palId][colorId].ch.b);
         }
     }

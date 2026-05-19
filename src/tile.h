@@ -5,9 +5,9 @@ using namespace std;
 
 struct Tile;
 
-struct pixelEntry {
+struct  pixelEntry {
     // parent_tile_id replaces the reference to a pixel's parent tile used in the JS version
-    size_t   parent_tile_id;
+    int      parent_tile_id;
     rgbColor color;
     unsigned int x;
     unsigned int y;
@@ -24,7 +24,7 @@ struct pixelEntry {
 struct Tile
 {
     vector <rgbColor>   colors;  // GOING TO HAVE TO MAKE ALL COLORS DOUBLES I THINK
-    vector <size_t>     counts;
+    vector <int>        counts;
     vector <pixelEntry> pixels;
 };
 

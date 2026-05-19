@@ -10,7 +10,7 @@
 using namespace std;
 
 struct Candidate {
-    size_t    colorIndex;
+    int       colorIndex;
     double    colorDistance;
     rgbColor  comparedColor;
     double    brightness;

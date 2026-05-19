@@ -8,30 +8,30 @@
 using namespace std;
 
 struct RandomShuffle {
-    vector <size_t> values;
-    size_t currentIndex;  // TODO: size_t?
+    vector <int> values;
+    int currentIndex;
 
-    void init(size_t n) {
-        for (size_t i = 0; i < n; i++) {
+    void init(int n) {
+        for (int i = 0; i < n; i++) {
             values.push_back(i);
             currentIndex = n - 1;
         }
     }
 
     void shuffle() {
-        for (size_t i = 0; i < values.size(); i++) {
+        for (int i = 0; i < (int)values.size(); i++) {
             // const index = i + floor(rand() * (values.size() - i));
             // TODO: why doesn't it swap with ANY index in the range, and instead only from a gradually shrinking section at the end?
-            const size_t index = i + (size_t)floor(((double)rand() / ((double)(RAND_MAX)+(double)(1))) * (double)(values.size() - i));  // TODO: more idiomatic rand range?
-            const size_t tmp = values[i];
+            const int index = i + (int)floor(((double)rand() / ((double)(RAND_MAX) + (double)(1))) * (double)(values.size() - i));  // TODO: more idiomatic rand range?
+            const int tmp = values[i];
             values[i] = values[index];
             values[index] = tmp;
         }
     }
 
-    size_t next() {
+    int next() {
         currentIndex += 1;
-        if (currentIndex >= values.size()) {
+        if (currentIndex >= (int)values.size()) {
             shuffle();
             currentIndex = 0;
         }
