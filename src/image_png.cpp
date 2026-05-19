@@ -118,6 +118,7 @@ int saveImageRGBAToPNG(quantOptions & options, Image & image) {
 
     }
     else {
+    // TODO: DEBUG: Note: The RGB output can be forced to show a more detailed preview image that doesn't have as many palette constraints yet applied
         if (options.verbose) printf("PNG export: Non-indexed (RGBA8888) Mode\n");
 
         //Test: output png after reading it
