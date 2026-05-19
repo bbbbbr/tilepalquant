@@ -38,13 +38,15 @@ static int getClosestPaletteIndexDither(const vector <vector <rgbColor>> & palet
 static Candidate closestPaletteDistanceDither(const vector <vector <rgbColor>> & palettes, const Tile & tile);
 
 // Truncate value to N bits
-static rgbColor getColor(Image & image, unsigned int x, unsigned int y);
-static bool isPixelTransparent(Image & image, unsigned int x, unsigned int y);
-static bool isColorTransparent(rgbColor & color);
-static Tile extractTile(Image & image, unsigned int startX, unsigned int startY, int tile_id);
+static rgbColor getColor(const Image & image, const unsigned int x, const unsigned int y);
+static bool isPixelTransparent(const Image & image, const unsigned int x, const unsigned int y);
+static bool isColorTransparent(const rgbColor & color);
+static Tile extractTile(const Image & image, const unsigned int startX, const unsigned int startY, const int tile_id);
 static void extractTiles(Image & image, vector <Tile> & tiles);
-static bool equalColors(rgbColor & c1, rgbColor & c2);
+static bool equalColors(const rgbColor & c1, const rgbColor & c2);
 static void extractAllPixels(vector <Tile> & tiles, vector <pixelEntry> & pixels);
+static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Image & image, const bool useDither);
+static void addPngColors(vector <vector <rgbColor>> & palettes, vector <rgbColorU8> & pngPalette, int adjustedIndex);
 static void colorQuantize1Color(vector <Tile> & tiles, vector <pixelEntry> & pixels, RandomShuffle & randomShuffle, vector <vector <rgbColor>> & palettes);
 
 static rgbColor cloneColor(const rgbColor & color);
@@ -67,6 +69,7 @@ static int minIndexDbl(vector <double> values);
 static Tile & getParentTile(vector <Tile> & tiles, const pixelEntry & pixel);
 static double randRange0to1(void);
 static int    indexOf(const vector <int> & vec, int matchValue);
+static rgbColorU8 rgbColorToU8(const rgbColor & col);
 static void   printPalettes(const vector <vector <rgbColor>> & palettes);
 
 /*
@@ -105,7 +108,9 @@ static void updateProgress(float progress) {
 
 static void updateQuantizedImage(Image & image) {
 //    postMessage({ action: Action.UpdateQuantizedImage, imageData: image });
-    if (options.verbose) printf("* Shim: UpdateQuantizedImage() - no preview of intermediate image\n");
+    // TODO: TEMP: DEBUG: export a PNG as progress
+    if (options.verbose) printf("* Shim: UpdateQuantizedImage() - writing out test png of intermediate processed image1\n");
+    saveImageRGBAToPNG(options, image);
 }
 
 // function updatePalettes(palettes, doSorting) {
@@ -127,12 +132,12 @@ static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bo
     if (options.colorZeroBehaviour == Opts::indexZeroShared) {
         startIndex = 1;
     }
-    // @ CURRENT LOC HERE
     if (doSorting) {
         pal = sortPalettes(pal, startIndex);
     }
+    // @ CURRENT LOC HERE
 /*
-    // TODO: Postmessage update handling... (is it needed?)
+    // TODO: Postmessage update handling... (is it needed?), Don't really need a preview of the palette image since it's embedded in the indexed PNG (at least for <= 256 colors)
     postMessage({
         action: Action.UpdatePalettes,
         palettes: pal,
@@ -257,10 +262,12 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     updateProgress(prog[0] / options.numPalettes);
     updatePalettes(palettes, false);
 
+    if (showProgress) {
+        Image reducedOutput = quantizeTiles(palettes, reducedImageData, false);
+        updateQuantizedImage(reducedOutput);
+    }
     // @ CURRENT LOC HERE
     /*
-    if (showProgress)
-        updateQuantizedImage(quantizeTiles(palettes, reducedImageData, false));
     for (let numColors = startIndex; numColors <= endIndex; numColors++) {
         expandPalettesByOneColor(palettes, tiles, pixels, randomShuffle);
         updateProgress((prog[0] * numColors) / options.colorsPerPalette);
@@ -1027,7 +1034,7 @@ static Candidate closestPaletteDistanceDither(const vector <vector <rgbColor>> &
 
 // function getColor(image, x, y) {
 // TODO: Inline?
-static rgbColor getColor(Image & image, unsigned int x, unsigned int y) {
+static rgbColor getColor(const Image & image, const unsigned int x, const unsigned int y) {
     // Seems to operate on raw RGBA8888 image buffer
     const unsigned int index = RGBA8888_SZ * (x + (image.width * y));
     const rgbColor color = {
@@ -1039,7 +1046,8 @@ static rgbColor getColor(Image & image, unsigned int x, unsigned int y) {
 }
 
 // extractTile(image, startX, startY) {
-static Tile extractTile(Image & image, unsigned int startX, unsigned int startY, int tile_id) {
+// static Tile extractTile(Image & image, unsigned int startX, unsigned int startY, int tile_id) {
+static Tile extractTile(const Image & image, const unsigned int startX, const unsigned int startY, const int tile_id) {
     // const { tileWidth, tileHeight, colorZeroBehaviour, colorZeroValue } = quantizationOptions;
     // See tile.h
     // const tile = {
@@ -1086,14 +1094,14 @@ static Tile extractTile(Image & image, unsigned int startX, unsigned int startY,
 
 // TODO: Inline?
 // isPixelTransparent(x, y) {
-bool isPixelTransparent(Image & image, unsigned int x, unsigned int y) {
+bool isPixelTransparent(const Image & image, const unsigned int x, const unsigned int y) {
     const unsigned int index = RGBA8888_SZ * (x + image.width * y);
     return ((options.colorZeroBehaviour == Opts::indexZeroTranspFromTransp) &&
         (image.data[index + RGBA_ALPHA] < RGBA_ALPHA_MAX));
 }
 
 // function isColorTransparent(color) {
-bool isColorTransparent(rgbColor & color) {
+bool isColorTransparent(const rgbColor & color) {
     return ((options.colorZeroBehaviour == Opts::indexZeroTranspFromColor) &&
         equalColors(color, options.colorZeroValue));
 }
@@ -1142,7 +1150,7 @@ static void extractTiles(Image & image, vector <Tile> & tiles) {
 }
 
 // function equalColors(c1, c2) {
-static bool equalColors(rgbColor & c1, rgbColor & c2) {
+static bool equalColors(const rgbColor & c1, const rgbColor & c2) {
     if (c1.ch.r != c2.ch.r) return false;
     if (c1.ch.g != c2.ch.g) return false;
     if (c1.ch.b != c2.ch.b) return false;
@@ -1160,44 +1168,63 @@ static void extractAllPixels(vector <Tile> & tiles, vector <pixelEntry> & pixels
       // return pixels; // Changed to created by caller and passed by reference
 }
 
-/*
-function quantizeTiles(palettes, image, useDither) {
-    const { tileWidth, tileHeight, bitsPerChannel, colorZeroBehaviour, colorZeroValue, numPalettes, colorsPerPalette, } = quantizationOptions;
-    const imageIsReduced = options.dither !== Dither.Off;
-    let adjustedIndex = 0;
-    if (colorZeroBehaviour == ColorZeroBehaviour.TransparentFromColor ||
-        colorZeroBehaviour == ColorZeroBehaviour.TransparentFromTransparent) {
+// function quantizeTiles(palettes, image, useDither) {
+static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Image & image, const bool useDither) {
+    // const { tileWidth, tileHeight, bitsPerChannel, colorZeroBehaviour, colorZeroValue, numPalettes, colorsPerPalette, } = quantizationOptions;
+    const bool imageIsReduced = options.ditherMethod != Opts::ditherOff;
+
+    int adjustedIndex = 0;
+    if ((options.colorZeroBehaviour == Opts::indexZeroTranspFromColor) ||
+        (options.colorZeroBehaviour == Opts::indexZeroTranspFromTransp)) {
         adjustedIndex = 1;
     }
-    const reducedPalettes = structuredClone(palettes);
-    for (const pal of reducedPalettes) {
-        for (const color of pal) {
-            toNbitColor(color, bitsPerChannel);
+
+    // const reducedPalettes = structuredClone(palettes);
+    vector <vector <rgbColor>> reducedPalettes = palettes;
+    for (vector <rgbColor> pal : reducedPalettes) {
+        for (rgbColor color : pal) {
+            toNbitColor(color, options.bitsPerChannel);
         }
     }
-    const transparentColor = cloneColor(colorZeroValue);
+
+    // const transparentColor = cloneColor(options.colorZeroValue);
+    rgbColor transparentColor = options.colorZeroValue;
     if (imageIsReduced)
-        toNbitColor(transparentColor, bitsPerChannel);
-    const colorZero = cloneColor(colorZeroValue);
-    toNbitColor(colorZero, bitsPerChannel);
-    const bmpWidth = Math.ceil(image.width / 4) * 4;
-    const quantizedImage = {
-        width: image.width,
-        height: image.height,
-        data: new Uint8ClampedArray(image.data.length),
-        totalPaletteColors: numPalettes * colorsPerPalette,
-        paletteData: new Uint8ClampedArray(1024),
-        colorIndexes: new Uint8ClampedArray(bmpWidth * image.height),
-    };
-    if (numPalettes * colorsPerPalette <= 256) {
-        addBmpColors(reducedPalettes, quantizedImage.paletteData);
+        toNbitColor(transparentColor, options.bitsPerChannel);
+    rgbColor colorZero = cloneColor(options.colorZeroValue);
+    toNbitColor(colorZero, options.bitsPerChannel);
+
+    // int bmpWidth = ceil(image.width / 4) * 4;
+    // const quantizedImage = {
+    //     width: image.width,
+    //     height: image.height,
+    //     data: new Uint8ClampedArray(image.data.length),
+    //     totalPaletteColors: options.numPalettes * options.colorsPerPalette,
+    //     paletteData: new Uint8ClampedArray(1024),
+    //     colorIndexes: new Uint8ClampedArray(bmpWidth * image.height),
+    // };
+    Image quantizedImage;
+    quantizedImage.width = image.width;
+    quantizedImage.height = image.height;
+    quantizedImage.data.resize(image.data.size());
+    quantizedImage.totalPaletteColors = options.numPalettes * options.colorsPerPalette;
+    // Resize below not needed, colors added by .push_back() insertion instead,
+    // quantizedImage.paletteData.resize( .... N .... ); // = new Uint8ClampedArray(1024);
+    quantizedImage.colorIndexes.resize(image.width * image.height); // = new Uint8ClampedArray(bmpWidth * image.height),
+
+    if ((options.numPalettes * options.colorsPerPalette) <= 256) {
+        addPngColors(reducedPalettes, quantizedImage.paletteData, adjustedIndex);
     }
-    for (let startY = 0; startY < image.height; startY += tileHeight) {
-        for (let startX = 0; startX < image.width; startX += tileWidth) {
-            const tile = extractTile(image, startX, startY);
-            let palette = reducedPalettes[0];
-            let closestPaletteIndex = 0;
-            if (tile.colors.length > 0) {
+    else if (options.verbose) {printf("extractTile(): No preview PNG image, more than 256 colors\n"); }
+
+    for (unsigned int startY = 0; startY < image.height; startY += options.tileHeight) {
+        for (unsigned int startX = 0; startX < image.width; startX += options.tileWidth) {
+
+            Tile tile = extractTile(image, startX, startY, TILE_ID_DISCARDABLE);
+            vector <rgbColor> palette = reducedPalettes[0];
+
+            int closestPaletteIndex = 0;
+            if (tile.colors.size() > 0) {
                 if (useDither) {
                     closestPaletteIndex = getClosestPaletteIndexDither(reducedPalettes, tile);
                 }
@@ -1206,76 +1233,86 @@ function quantizeTiles(palettes, image, useDither) {
                 }
                 palette = reducedPalettes[closestPaletteIndex];
             }
-            const endX = Math.min(startX + tileWidth, image.width);
-            const endY = Math.min(startY + tileHeight, image.height);
-            for (let y = startY; y < endY; y++) {
-                for (let x = startX; x < endX; x++) {
-                    const index = 4 * (x + image.width * y);
-                    const bmpIndex = x + bmpWidth * (image.height - 1 - y);
-                    const color = [
-                        image.data[index],
-                        image.data[index + 1],
-                        image.data[index + 2],
-                    ];
-                    if ((colorZeroBehaviour ==
-                        ColorZeroBehaviour.TransparentFromTransparent &&
-                        image.data[index + 3] < 255) ||
-                        (colorZeroBehaviour ==
-                            ColorZeroBehaviour.TransparentFromColor &&
-                            equalColors(color, transparentColor))) {
-                        quantizedImage.data[index + 0] = image.data[index + 0];
-                        quantizedImage.data[index + 1] = image.data[index + 1];
-                        quantizedImage.data[index + 2] = image.data[index + 2];
-                        quantizedImage.data[index + 3] = image.data[index + 3];
-                        quantizedImage.colorIndexes[bmpIndex] =
-                            closestPaletteIndex * colorsPerPalette;
+            const unsigned int endX = MIN(startX + options.tileWidth, image.width);
+            const unsigned int endY = MIN(startY + options.tileHeight, image.height);
+
+            for (unsigned int y = startY; y < endY; y++) {
+                for (unsigned int x = startX; x < endX; x++) {
+
+                    const size_t index = RGBA8888_SZ * (x + image.width * y);
+                    // const bmpIndex = x + bmpWidth * (image.height - 1 - y);
+                    const size_t pngIndex = (x + image.width * y);
+                    // const color = [
+                    //     image.data[index],
+                    //     image.data[index + 1],
+                    //     image.data[index + 2],
+                    // ];
+                    rgbColor color = getColor(image, x,y);
+
+                    if (((options.colorZeroBehaviour == Opts::indexZeroTranspFromTransp) && (image.data[index + RGBA8_ALPHA] < 255)) ||
+                        ((options.colorZeroBehaviour == Opts::indexZeroTranspFromColor)  && equalColors(color, transparentColor))) {
+                        // Copy pixel from source image as transparent or as-is(treated as transparent) if applicable
+                         quantizedImage.data[index + RGBA8_R] = image.data[index + RGBA8_R];
+                        quantizedImage.data[index + RGBA8_G] = image.data[index + RGBA8_G];
+                        quantizedImage.data[index + RGBA8_B] = image.data[index + RGBA8_B];
+                        quantizedImage.data[index + RGBA8_ALPHA] = image.data[index + RGBA8_ALPHA];
+                        // Set paletteIndex to color zero of closest palette (perhaps since it's typically transparent on consoles)
+                        quantizedImage.colorIndexes[pngIndex] =
+                            closestPaletteIndex * options.colorsPerPalette;
                     }
                     else {
-                        let closestColorIndex = 0;
+                        int closestColorIndex = 0;
                         if (useDither) {
-                            [closestColorIndex] = getClosestColorDither(palette, {
-                                color: color,
-                                x: x,
-                                y: y,
-                            });
+                            // [closestColorIndex] = getClosestColorDither(palette, {
+                            //     color: color,
+                            //     x: x,
+                            //     y: y,
+                            // });
+                            const pixelEntry pixel = {TILE_ID_DISCARDABLE, color, x, y};
+                            const Candidate result = getClosestColorDither(palette, pixel);
+                            closestColorIndex = result.colorIndex;
                         }
                         else {
-                            [closestColorIndex] = getClosestColor(palette, color);
+                            // [closestColorIndex] = getClosestColor(palette, color);
+                            const Candidate result = getClosestColor(palette, color);
+                            closestColorIndex = result.colorIndex;
                         }
-                        const paletteColor = cloneColor(palette[closestColorIndex]);
-                        quantizedImage.data[index + 0] = paletteColor[0];
-                        quantizedImage.data[index + 1] = paletteColor[1];
-                        quantizedImage.data[index + 2] = paletteColor[2];
-                        quantizedImage.data[index + 3] = 255;
-                        quantizedImage.colorIndexes[bmpIndex] =
-                            closestPaletteIndex * colorsPerPalette +
-                                closestColorIndex +
-                                adjustedIndex;
+                        const rgbColor paletteColor = palette[closestColorIndex]; // cloneColor(palette[closestColorIndex]);
+                        quantizedImage.data[index + RGBA8_R] = (uint8_t)paletteColor.ch.r;
+                        quantizedImage.data[index + RGBA8_G] = (uint8_t)paletteColor.ch.g;
+                        quantizedImage.data[index + RGBA8_B] = (uint8_t)paletteColor.ch.b;
+                        quantizedImage.data[index + RGBA8_ALPHA] = (uint8_t)ALPHA_FULLY_OPAQUE;
+                        quantizedImage.colorIndexes[pngIndex] =
+                            (closestPaletteIndex * options.colorsPerPalette) + closestColorIndex + adjustedIndex;
                     }
                 }
             }
         }
     }
     return quantizedImage;
-    function addBmpColors(palettes, bmpPalette) {
-        let i = 0;
-        for (const pal of palettes) {
-            if (adjustedIndex == 1) {
-                bmpPalette[i] = colorZero[2];
-                bmpPalette[i + 1] = colorZero[1];
-                bmpPalette[i + 2] = colorZero[0];
-                i += 4;
-            }
-            for (const color of pal) {
-                bmpPalette[i] = color[2];
-                bmpPalette[i + 1] = color[1];
-                bmpPalette[i + 2] = color[0];
-                i += 4;
-            }
+}
+
+// Makes a uint8 copy of the palette for use with exporting a preview image
+// function addBmpColors(palettes, bmpPalette) {
+static void addPngColors(vector <vector <rgbColor>> & palettes, vector <rgbColorU8> & pngPalette, int adjustedIndex) {
+    int i = 0;
+    for (const vector <rgbColor> & pal : palettes) {
+        if (adjustedIndex == 1) {
+            pngPalette.push_back(rgbColorToU8(options.colorZeroValue));
+            // bmpPalette[i] = colorZero[RGB_B];
+            // bmpPalette[i + 1] = colorZero[RGB_g];
+            // bmpPalette[i + 2] = colorZero[RGB_R];
+            // i += 4;
+        }
+        for (const rgbColor & color : pal) {
+            pngPalette.push_back(rgbColorToU8(color));
+            // bmpPalette[i] = color[RGB_B];
+            // bmpPalette[i + 1] = color[RGB_g];
+            // bmpPalette[i + 2] = color[RGB_R];
+            // i += 4;
         }
     }
 }
-*/
 
 // function colorQuantize1Color(tiles, pixels, randomShuffle) {
 static void colorQuantize1Color(vector <Tile> & tiles, vector <pixelEntry> & pixels, RandomShuffle & randomShuffle, vector <vector <rgbColor>> & palettes) {
@@ -1549,6 +1586,13 @@ static int indexOf(const vector <int> & vec, int matchValue) {
         if (vec[index] == matchValue) return index;
     }
     return 0;  // TODO: May need to switch to int and return -1 to signal failure (or some other method that works with expectations in the code)
+}
+
+static rgbColorU8 rgbColorToU8(const rgbColor & col) {
+    rgbColorU8 newColor = {(uint8_t)col.ch.r,
+                           (uint8_t)col.ch.g,
+                           (uint8_t)col.ch.b};
+    return (newColor);
 }
 
 static void printPalettes(const vector <vector <rgbColor>> & palettes) {

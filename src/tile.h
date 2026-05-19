@@ -5,6 +5,8 @@ using namespace std;
 
 struct Tile;
 
+#define TILE_ID_DISCARDABLE 0
+
 struct  pixelEntry {
     // parent_tile_id replaces the reference to a pixel's parent tile used in the JS version
     int      parent_tile_id;

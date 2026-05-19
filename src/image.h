@@ -28,7 +28,8 @@ using namespace std;
 #define RGBA32(R,G,B,A) ((R << 24) | (G << 16) | (B << 8) | A)
 #define RGB24(R,G,B)    ((R << 16) | (G << 8) | B)
 
-#define ALPHA_FULLY_TRANSPARENT       0  // Full alpha channel transparency
+#define ALPHA_FULLY_TRANSPARENT       0   // Full alpha channel transparency
+#define ALPHA_FULLY_OPAQUE            255 // Full alpha channel opacity
 #define RGBA32_TRANSPARENT_WHITE      (RGBA32(255,255,255,ALPHA_FULLY_TRANSPARENT))  // White, full transparency
 
 // #define MAX(A,B) ((A)>(B)?(A):(B))
@@ -44,11 +45,24 @@ struct rgbColor {
     };
 };
 
+struct rgbColorU8 {
+    union {
+        uint8_t chan[RGB_SZ];
+        struct {
+            uint8_t r;
+            uint8_t g;
+            uint8_t b;
+        } ch;
+    };
+};
 
 struct Image {
-    vector< unsigned char > data; //data in indexed format
+    vector< uint8_t > data; //data in indexed format
     unsigned int width;
     unsigned int height;
+    int          totalPaletteColors;  // Means more like rgb triplet size?
+    vector <rgbColorU8> paletteData;
+    vector <uint8_t>    colorIndexes;
 
     // size_t colors_per_pal;  // Number of colors per palette (ex: CGB has 4 colors per palette x 8 palettes total)
     // size_t total_color_count; // Total number of colors across all palettes (palette_count x colors_per_pal)

@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     if ((errorCode = processArgs(argc, argv, &options)) == EXIT_SUCCESS) {
 
         Image sourceImageRGBA;
-        if ((errorCode = loadImageRGBAFromPNG(&options, &sourceImageRGBA)) != EXIT_SUCCESS) {
+        if ((errorCode = loadImageRGBAFromPNG(options, sourceImageRGBA)) != EXIT_SUCCESS) {
             return errorCode;
         }
 
