@@ -27,6 +27,7 @@ static void toLinearColor(rgbColor & color);
 static double toSrgb(double x);
 static void toSrgbColor(rgbColor & color);
 static double brightness(const rgbColor & color);
+static void replaceWeakestColors(vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, float minColorFactor, float minPaletteFactor, bool replacePalettes);
 
 static float meanSquareError(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles);
 static float meanSquareErrorDither(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles);
@@ -281,11 +282,13 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     }
 
     float minMse = meanSquareErrSelected(palettes, tiles);
+    const vector <vector <rgbColor>> minPalettes = palettes;
+    for (int i = 0; i < replaceIterations; i++) {
+        // palettes = replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
+        // "palettes" gets reassigned to the results within the function
+        replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
     // @ CURRENT LOC HERE
-    /*
-    let minPalettes = structuredClone(palettes);
-    for (let i = 0; i < replaceIterations; i++) {
-        palettes = replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
+/*
         for (let iteration = 0; iteration < iterations; iteration++) {
             const nextPixel = pixels[randomShuffle.next()];
             movePalettesCloser(palettes, nextPixel, alpha);
@@ -305,9 +308,11 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
                 updateQuantizedImage(quantizeTiles(palettes, reducedImageData, false));
             }
         }
-        console.log("MSE: " + mse.toFixed(0));
+ */
+        // console.log("MSE: " + mse.toFixed(0));
         // console.log((performance.now() - t1).toFixed(0) + " ms");
     }
+    /*
     if (useMin) {
         palettes = minPalettes;
     }
@@ -672,131 +677,171 @@ static double brightness(const rgbColor & color) {
     return sum;
 }
 
-/*
-function replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, replacePalettes) {
-    const colorZeroBehaviour = options.colorZeroBehaviour;
-    const useSlowDither = options.dither == Dither.Slow;
-    let closestPal = closestPaletteDistance;
-    if (useSlowDither) {
-        closestPal = closestPaletteDistanceDither;  / TODO: sets up an alias to call diff func than default
-    }
-    const closestPaletteIndex = zeroArray(tiles.length);
-    let maxPaletteIndex = 0;
-    let minPaletteIndex = 0;
-    const totalPaletteMse = zeroArray(palettes.length);
-    const removedPaletteMse = zeroArray(palettes.length);
-    if (palettes.length > 1) {
-        for (let j = 0; j < tiles.length; j++) {
-            const tile = tiles[j];
-            const [index, minDistance] = closestPal(palettes, tile);
+// function replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, replacePalettes) {
+static void replaceWeakestColors(vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, float minColorFactor, float minPaletteFactor, bool replacePalettes) {
+    const unsigned int colorZeroBehaviour = options.colorZeroBehaviour;
+    const bool         useSlowDither      = options.ditherMethod == Opts::ditherSlow;
+
+    // let closestPal = closestPaletteDistance;  // Function alias, going to use a simplistic implementation
+    // if (useSlowDither) {
+    //     closestPal = closestPaletteDistanceDither;
+    // }
+
+    vector <int> closestPaletteIndex(tiles.size());
+    int maxPaletteIndex = 0;
+    int minPaletteIndex = 0;
+    vector <double> totalPaletteMse(palettes.size());
+    vector <double> removedPaletteMse(palettes.size());
+
+    if (palettes.size() > 1) {
+        for (int j = 0; j < (int)tiles.size(); j++) {
+            const Tile & tile = tiles[j];
+            // Handle function alias
+            // const [index, minDistance] = closestPal(palettes, tile);
+            Candidate result;
+            if (useSlowDither) { result = closestPaletteDistance(palettes, tile); }
+            else               { result = closestPaletteDistanceDither(palettes, tile); }
+            const int index = result.colorIndex;
+            const double minDistance = result.colorDistance;
             totalPaletteMse[index] += minDistance;
             closestPaletteIndex[j] = index;
-            const remainingPalettes = [];
-            for (let i = 0; i < palettes.length; i++) {
+
+            vector <vector <rgbColor>> remainingPalettes;
+            for (int i = 0; i < (int)palettes.size(); i++) {
                 if (i != index) {
-                    remainingPalettes.push(palettes[i]);
+                    remainingPalettes.push_back(palettes[i]);
                 }
             }
-            if (remainingPalettes.length > 0) {
-                const [, minDistance2] = closestPal(remainingPalettes, tile);
+            if (remainingPalettes.size() > 0) {
+                // Handle function alias
+                // const [, minDistance2] = closestPal(remainingPalettes, tile);
+                Candidate result;
+                if (useSlowDither) { result = closestPaletteDistance(remainingPalettes, tile); }
+                else               { result = closestPaletteDistanceDither(remainingPalettes, tile); }
+                const double minDistance2 = result.colorDistance;
                 removedPaletteMse[index] += minDistance2;
             }
         }
-        maxPaletteIndex = maxIndex(totalPaletteMse);
-        minPaletteIndex = minIndex(removedPaletteMse);
+        maxPaletteIndex = maxIndexDbl(totalPaletteMse);
+        minPaletteIndex = minIndexDbl(removedPaletteMse);
     }
-    const result = [];
-    if (palettes[0].length > 1) {
-        const totalColorMse = [];
-        const secondColorMse = [];
-        for (let j = 0; j < palettes.length; j++) {
-            totalColorMse.push(zeroArray(palettes[j].length));
-            secondColorMse.push(zeroArray(palettes[j].length));
+
+    vector <vector <rgbColor>> result;
+    if (palettes[0].size() > 1) {
+
+        vector <vector <double>> totalColorMse;
+        vector <vector <double>> secondColorMse;
+        for (int j = 0; j < (int)palettes.size(); j++) {
+            totalColorMse[j].resize(palettes[j].size(), 0.0);
+            secondColorMse[j].resize(palettes[j].size(), 0.0);
         }
-        for (let j = 0; j < tiles.length; j++) {
-            const tile = tiles[j];
-            const minPaletteIndex = closestPaletteIndex[j];
-            const pal = palettes[minPaletteIndex];
+
+        for (int j = 0; j < (int)tiles.size(); j++) {
+            const Tile & tile = tiles[j];
+            const int minPaletteIndex = closestPaletteIndex[j];
+            const vector <rgbColor> pal = palettes[minPaletteIndex];
+
             if (useSlowDither) {
-                for (const pixel of tile.pixels) {
-                    const [minColorIndex, minDist] = getClosestColorDither(pal, pixel);
+                for (const pixelEntry pixel : tile.pixels) {
+                    // const [minColorIndex, minDist] = getClosestColorDither(pal, pixel);
+                    const Candidate result = getClosestColorDither(pal, pixel);
+                    const int minColorIndex = result.colorIndex;
+                    const double minDist    = result.colorDistance;
                     totalColorMse[minPaletteIndex][minColorIndex] += minDist;
-                    const remainingColors = [];
-                    for (let i = 0; i < pal.length; i++) {
+
+                    vector <rgbColor> remainingColors;
+                    for (int i = 0; i < (int)pal.size(); i++) {
                         if (i != minColorIndex) {
-                            remainingColors.push(pal[i]);
+                            remainingColors.push_back(pal[i]);
                         }
                     }
-                    const [, secondDist] = getClosestColorDither(remainingColors, pixel);
+                    // const [, secondDist] = getClosestColorDither(remainingColors, pixel);
+                    const Candidate result2 = getClosestColorDither(remainingColors, pixel);
+                    const double secondDist = result2.colorDistance;
                     secondColorMse[minPaletteIndex][minColorIndex] +=
                         secondDist;
                 }
             }
             else {
-                for (let i = 0; i < tile.colors.length; i++) {
-                    const color = tile.colors[i];
-                    const [minColorIndex, minDist] = getClosestColor(pal, color);
+                for (int i = 0; i < (int)tile.colors.size(); i++) {
+                    const rgbColor color = tile.colors[i];
+                    // const [minColorIndex, minDist] = getClosestColor(pal, color);
+                    const Candidate result = getClosestColor(pal, color);
+                    const int minColorIndex = result.colorIndex;
+                    const double minDist = result.colorDistance;
                     totalColorMse[minPaletteIndex][minColorIndex] +=
                         minDist * tile.counts[i];
-                    const remainingColors = [];
-                    for (let i = 0; i < pal.length; i++) {
+
+                    vector <rgbColor> remainingColors;
+                    for (int i = 0; i < (int)pal.size(); i++) {
                         if (i != minColorIndex) {
-                            remainingColors.push(pal[i]);
+                            remainingColors.push_back(pal[i]);
                         }
                     }
-                    const [, secondDist] = getClosestColor(remainingColors, color);
+                    // const [, secondDist] = getClosestColor(remainingColors, color);
+                    const Candidate result2 = getClosestColor(remainingColors, color);
+                    const double secondDist = result2.colorDistance;
                     secondColorMse[minPaletteIndex][minColorIndex] +=
                         secondDist * tile.counts[i];
                 }
             }
         }
-        let sharedColorIndex = -1;
-        if (colorZeroBehaviour == ColorZeroBehaviour.Shared) {
+
+        int sharedColorIndex = -1;
+        if (options.colorZeroBehaviour == Opts::indexZeroShared) {
             sharedColorIndex = 0;
         }
-        for (let palIndex = 0; palIndex < palettes.length; palIndex++) {
-            const maxColorIndex = maxIndex(totalColorMse[palIndex]);
-            const minColorIndex = minIndex(secondColorMse[palIndex]);
-            const shouldReplaceMinColor = minColorIndex !== maxColorIndex &&
-                minColorIndex !== sharedColorIndex &&
-                secondColorMse[palIndex][minColorIndex] <
-                    minColorFactor * totalColorMse[palIndex][maxColorIndex];
-            const colors = [];
-            for (let i = 0; i < palettes[palIndex].length; i++) {
-                if (i == minColorIndex && shouldReplaceMinColor) {
-                    console.log("replaced color in palette " + palIndex);
-                    colors.push(cloneColor(palettes[palIndex][maxColorIndex]));
+        for (int palIndex = 0; palIndex < (int)palettes.size(); palIndex++) {
+            const int maxColorIndex = maxIndexDbl(totalColorMse[palIndex]);
+            const int minColorIndex = minIndexDbl(secondColorMse[palIndex]);
+            const bool shouldReplaceMinColor = ((minColorIndex != maxColorIndex) &&
+                                                (minColorIndex != sharedColorIndex) &&
+                                                (secondColorMse[palIndex][minColorIndex] < (minColorFactor * totalColorMse[palIndex][maxColorIndex])));
+            vector <rgbColor> colors;
+            for (int i = 0; i < (int)palettes[palIndex].size(); i++) {
+                if ((i == minColorIndex) && shouldReplaceMinColor) {
+                    // console.log("replaced color in palette " + palIndex);
+                    colors.push_back(palettes[palIndex][maxColorIndex]);
                 }
                 else {
-                    colors.push(cloneColor(palettes[palIndex][i]));
+                    colors.push_back(palettes[palIndex][i]);
                 }
             }
-            result.push(colors);
+            result.push_back(colors);
         }
     }
     else {
-        for (let palIndex = 0; palIndex < palettes.length; palIndex++) {
-            const colors = [];
-            for (let i = 0; i < palettes[palIndex].length; i++) {
-                colors.push(cloneColor(palettes[palIndex][i]));
+        for (int palIndex = 0; palIndex < (int)palettes.size(); palIndex++) {
+            vector <rgbColor> colors;
+            for (int i = 0; i < (int)palettes[palIndex].size(); i++) {
+                colors.push_back(palettes[palIndex][i]);
             }
-            result.push(colors);
+            result.push_back(colors);
         }
     }
+
     if (replacePalettes &&
-        minPaletteIndex != maxPaletteIndex &&
-        removedPaletteMse[minPaletteIndex] <
-            minPaletteFactor * totalPaletteMse[maxPaletteIndex]) {
-        console.log("replaced palette " + minPaletteIndex);
-        while (result[minPaletteIndex].length > 0)
-            result[minPaletteIndex].pop();
-        for (const color of result[maxPaletteIndex]) {
-            const c = structuredClone(color);
-            result[minPaletteIndex].push(c);
+        (minPaletteIndex != maxPaletteIndex) &&
+        (removedPaletteMse[minPaletteIndex] < (minPaletteFactor * totalPaletteMse[maxPaletteIndex])) ) {
+
+        if (options.verbose) printf("replaceWeakestColors(): replaced palette %d\n", minPaletteIndex);
+
+        // while (result[minPaletteIndex].size() > 0)
+        //     result[minPaletteIndex].pop();
+        if (result[minPaletteIndex].size() > 0)
+            result[minPaletteIndex].clear();
+
+        for (const rgbColor & color : result[maxPaletteIndex]) {
+            const rgbColor c = color;
+            result[minPaletteIndex].push_back(c);
         }
     }
-    return result;
+    // return result;
+    // Handle return by copying result into source palette instead (what happens with the returned value)
+    palettes = result;
 }
+
+/*
 function kMeans(palettes, tiles) {
     const colorZeroBehaviour = options.colorZeroBehaviour;
     const counts = [];
