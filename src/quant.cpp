@@ -27,6 +27,9 @@ static void toLinearColor(rgbColor & color);
 static double toSrgb(double x);
 static void toSrgbColor(rgbColor & color);
 static double brightness(const rgbColor & color);
+
+static float meanSquareError(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles);
+static float meanSquareErrorDither(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles);
 static Candidate getClosestColor(const vector <rgbColor> & palette, const rgbColor & color);
 static Candidate getClosestColorDither(const vector <rgbColor> & palette, const pixelEntry & pixel);
 static double colorDistance(const rgbColor & a, const rgbColor & b);
@@ -276,8 +279,10 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
             updateQuantizedImage(reducedOutput);
         }
     }
+
+    float minMse = meanSquareErrSelected(palettes, tiles);
+    // @ CURRENT LOC HERE
     /*
-    let minMse = meanSquareErrSelected(palettes, tiles);
     let minPalettes = structuredClone(palettes);
     for (let i = 0; i < replaceIterations; i++) {
         palettes = replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
@@ -845,37 +850,43 @@ function kMeans(palettes, tiles) {
 */
 
 
-/*
-float meanSquareError(palettes, tiles) {
-    let totalDistance = 0;
-    let count = 0;
-    for (const tile of tiles) {
-        const palIndex = getClosestPaletteIndex(palettes, tile);
-        for (let i = 0; i < tile.colors.length; i++) {
-            const [, minDistance] = getClosestColor(palettes[palIndex], tile.colors[i]);
+
+// float meanSquareError(palettes, tiles) {
+static float meanSquareError(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles) {
+    double totalDistance = 0;
+    int count = 0;
+    for (const Tile & tile : tiles) {
+        const int palIndex = getClosestPaletteIndex(palettes, tile);
+        for (int i = 0; i < (int)tile.colors.size(); i++) {
+            // const [, minDistance] = getClosestColor(palettes[palIndex], tile.colors[i]);
+            const Candidate result = getClosestColor(palettes[palIndex], tile.colors[i]);
+            const double minDistance = result.colorDistance;
             totalDistance += minDistance * tile.counts[i];
             count += tile.counts[i];
         }
     }
-    return totalDistance / count;
+    return (float)(totalDistance / (double)count);
 }
 
-float meanSquareErrorDither(palettes, tiles) {
-    let totalDistance = 0;
-    let count = 0;
-    for (const tile of tiles) {
-        const palIndex = getClosestPaletteIndexDither(palettes, tile);
-        for (const pixel of tile.pixels) {
-            const [, minDistance] = getClosestColorDither(palettes[palIndex], pixel);
+// float meanSquareErrorDither(palettes, tiles) {
+static float meanSquareErrorDither(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles) {
+    double totalDistance = 0;
+    int count = 0;
+    for (const Tile & tile : tiles) {
+        const int palIndex = getClosestPaletteIndexDither(palettes, tile);
+        for (const pixelEntry & pixel : tile.pixels) {
+            // const [, minDistance] = getClosestColorDither(palettes[palIndex], pixel);
+            const Candidate result = getClosestColorDither(palettes[palIndex], pixel);
+            const double minDistance = result.colorDistance;
             totalDistance += minDistance;
             count += 1;
         }
     }
-    return totalDistance / count;
+    return (float)(totalDistance / (double)count);
 }
-*/
 
-
+// RandomShuffle moved to a separate source file
+//
 // See: randomshuffle.h
 
 
