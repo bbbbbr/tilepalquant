@@ -282,47 +282,50 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     }
 
     float minMse = meanSquareErrSelected(palettes, tiles);
-    const vector <vector <rgbColor>> minPalettes = palettes;
+    vector <vector <rgbColor>> minPalettes = palettes;
     for (int i = 0; i < replaceIterations; i++) {
         // palettes = replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
         // "palettes" gets reassigned to the results within the function
         replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
-    // @ CURRENT LOC HERE
-/*
-        for (let iteration = 0; iteration < iterations; iteration++) {
-            const nextPixel = pixels[randomShuffle.next()];
-            movePalettesCloser(palettes, nextPixel, alpha);
+
+        for (int iteration = 0; iteration < iterations; iteration++) {
+            const pixelEntry nextPixel = pixels[randomShuffle.next()];
+            movePalettesCloser(palettes, tiles, nextPixel, alpha);
         }
-        const mse = meanSquareErrSelected(palettes, tiles);
+        const float mse = meanSquareErrSelected(palettes, tiles);
         if (mse < minMse) {
             minMse = mse;
-            minPalettes = structuredClone(palettes);
+            minPalettes = palettes;
         }
         updateProgress(prog[0] + ((prog[1] - prog[0]) * (i + 1)) / replaceIterations);
         updatePalettes(palettes, false);
         if (showProgress) {
-            if (useMin && i == replaceIterations - 1) {
-                updateQuantizedImage(quantizeTiles(minPalettes, reducedImageData, false));
+            if (useMin && (i == (replaceIterations - 1))) {
+                Image reducedOutput = quantizeTiles(minPalettes, reducedImageData, false);
+                updateQuantizedImage(reducedOutput);
             }
             else {
-                updateQuantizedImage(quantizeTiles(palettes, reducedImageData, false));
+                Image reducedOutput = quantizeTiles(palettes, reducedImageData, false);
+                updateQuantizedImage(reducedOutput);
             }
         }
- */
-        // console.log("MSE: " + mse.toFixed(0));
-        // console.log((performance.now() - t1).toFixed(0) + " ms");
+        if (options.verbose) printf("MSE: %0.0f", mse);
+        // if (options.verbose) printf((performance.now() - t1).toFixed(0) + " ms");
     }
-    /*
+
     if (useMin) {
         palettes = minPalettes;
     }
+
+    // @ CURRENT LOC HERE
+    /*
     if (!useDither)
         palettes = reducePalettes(palettes, options.bitsPerChannel);
     const finalIterations = iterations * 10;
     let nextUpdate = iterations;
     for (let iteration = 0; iteration < finalIterations; iteration++) {
         const nextPixel = pixels[randomShuffle.next()];
-        movePalettesCloser(palettes, nextPixel, finalAlpha);
+        movePalettesCloser(palettes, tiles, nextPixel, finalAlpha);
         if (iteration >= nextUpdate) {
             nextUpdate += iterations;
             updateProgress(prog[1] + ((prog[2] - prog[1]) * iteration) / finalIterations);
