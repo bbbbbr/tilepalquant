@@ -1294,11 +1294,14 @@ static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Im
 
     // const reducedPalettes = structuredClone(palettes);
     vector <vector <rgbColor>> reducedPalettes = palettes;
-    for (vector <rgbColor> pal : reducedPalettes) {
-        for (rgbColor color : pal) {
+    for (vector <rgbColor> & pal : reducedPalettes) {
+        for (rgbColor & color : pal) {
             toNbitColor(color, options.bitsPerChannel);
         }
     }
+
+    if (options.verbose) printf("quantizeTiles()\n");
+    if (options.verbose) printPalettes(reducedPalettes);
 
     // const transparentColor = cloneColor(options.colorZeroValue);
     rgbColor transparentColor = options.colorZeroValue;
