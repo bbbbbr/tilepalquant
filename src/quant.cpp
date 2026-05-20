@@ -19,6 +19,7 @@ static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bo
 
 static void movePalettesCloser(vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, pixelEntry & pixel, float alpha);
 
+static vector <vector <rgbColor>> reducePalettes(const vector <vector <rgbColor>> & palettes, unsigned int bitsPerChannel);
 static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> palettes, const int startIndex);
 
 static void reverse(vector <int> & a, int left, int right);
@@ -27,7 +28,7 @@ static void toLinearColor(rgbColor & color);
 static double toSrgb(double x);
 static void toSrgbColor(rgbColor & color);
 static double brightness(const rgbColor & color);
-static void replaceWeakestColors(vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, float minColorFactor, float minPaletteFactor, bool replacePalettes);
+static vector <vector <rgbColor>> replaceWeakestColors(const vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, float minColorFactor, float minPaletteFactor, bool replacePalettes);
 
 static float meanSquareError(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles);
 static float meanSquareErrorDither(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles);
@@ -284,9 +285,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     float minMse = meanSquareErrSelected(palettes, tiles);
     vector <vector <rgbColor>> minPalettes = palettes;
     for (int i = 0; i < replaceIterations; i++) {
-        // palettes = replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
-        // "palettes" gets reassigned to the results within the function
-        replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
+        palettes = replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, true);
 
         for (int iteration = 0; iteration < iterations; iteration++) {
             const pixelEntry nextPixel = pixels[randomShuffle.next()];
@@ -317,11 +316,12 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
         palettes = minPalettes;
     }
 
-    // @ CURRENT LOC HERE
-    /*
     if (!useDither)
         palettes = reducePalettes(palettes, options.bitsPerChannel);
-    const finalIterations = iterations * 10;
+
+    // @ CURRENT LOC HERE
+    /*
+    const int finalIterations = iterations * 10;
     let nextUpdate = iterations;
     for (let iteration = 0; iteration < finalIterations; iteration++) {
         const nextPixel = pixels[randomShuffle.next()];
@@ -354,21 +354,22 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     return EXIT_SUCCESS;
 }
 
-/*
-function reducePalettes(palettes, bitsPerChannel) {
-    const result = [];
-    for (const palette of palettes) {
-        const pal = [];
-        for (const color of palette) {
-            const col = cloneColor(color);
+
+// function reducePalettes(palettes, bitsPerChannel) {
+static vector <vector <rgbColor>> reducePalettes(const vector <vector <rgbColor>> & palettes, unsigned int bitsPerChannel) {
+    vector <vector <rgbColor>> result;
+    for (const vector <rgbColor> & palette : palettes) {
+        vector <rgbColor> pal;
+        for (const rgbColor & color : palette) {
+            rgbColor col = color;
             toNbitColor(col, bitsPerChannel);
-            pal.push(col);
+            pal.push_back(col);
         }
-        result.push(pal);
+        result.push_back(pal);
     }
     return result;
 }
-*/
+
 
 // function sortPalettes(palettes, startIndex) {
 // Note: Not passing palettes as a reference is intentional
@@ -681,7 +682,7 @@ static double brightness(const rgbColor & color) {
 }
 
 // function replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, replacePalettes) {
-static void replaceWeakestColors(vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, float minColorFactor, float minPaletteFactor, bool replacePalettes) {
+static vector <vector <rgbColor>> replaceWeakestColors(const vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, float minColorFactor, float minPaletteFactor, bool replacePalettes) {
     const unsigned int colorZeroBehaviour = options.colorZeroBehaviour;
     const bool         useSlowDither      = options.ditherMethod == Opts::ditherSlow;
 
@@ -839,9 +840,7 @@ static void replaceWeakestColors(vector <vector <rgbColor>> & palettes, vector <
             result[minPaletteIndex].push_back(c);
         }
     }
-    // return result;
-    // Handle return by copying result into source palette instead (what happens with the returned value)
-    palettes = result;
+    return result;
 }
 
 /*
