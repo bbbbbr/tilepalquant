@@ -59,7 +59,8 @@ int saveImageRGBAToPNG(quantOptions & options, Image & image) {
         // Note: ".totalPaletteColors" reflects the maximum possible output quantized palette size if all colors are populated, but in various initial iterations they may not be
 
         if (options.verbose) printf("PNG export: Index Mode\n");
-        if (options.verbose) printf("PNG export: .totalPaletteColors = %d, .paletteData.size() = %d, calculated count = %d\n", options.totalPaletteColors, (int)image.paletteData.size(), colorCount);
+        if (options.verbose) printf("PNG export: .paletteData.size() = %d, Calculated color count = %d\n", (int)image.paletteData.size(), colorCount);
+        // if (options.verbose) printf("PNG export: .totalPaletteColors = %d, .paletteData.size() = %d, calculated count = %d\n", options.totalPaletteColors, (int)image.paletteData.size(), colorCount);
 
         lodepng::State png_state;
 
