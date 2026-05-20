@@ -269,16 +269,16 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     updatePalettes(palettes, false);
 
     if (showProgress) {
-        Image reducedOutput = quantizeTiles(palettes, reducedImageData, false);
-        updateQuantizedImage(reducedOutput);
+        Image resultImage = quantizeTiles(palettes, reducedImageData, false);
+        updateQuantizedImage(resultImage);
     }
     for (int numColors = startIndex; numColors <= endIndex; numColors++) {
         expandPalettesByOneColor(palettes, tiles, pixels, randomShuffle);
         updateProgress((prog[0] * numColors) / options.colorsPerPalette);
         updatePalettes(palettes, false);
         if (showProgress) {
-            Image reducedOutput = quantizeTiles(palettes, reducedImageData, false);
-            updateQuantizedImage(reducedOutput);
+            Image resultImage = quantizeTiles(palettes, reducedImageData, false);
+            updateQuantizedImage(resultImage);
         }
     }
 
@@ -300,15 +300,15 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
         updatePalettes(palettes, false);
         if (showProgress) {
             if (useMin && (i == (replaceIterations - 1))) {
-                Image reducedOutput = quantizeTiles(minPalettes, reducedImageData, false);
-                updateQuantizedImage(reducedOutput);
+                Image resultImage = quantizeTiles(minPalettes, reducedImageData, false);
+                updateQuantizedImage(resultImage);
             }
             else {
-                Image reducedOutput = quantizeTiles(palettes, reducedImageData, false);
-                updateQuantizedImage(reducedOutput);
+                Image resultImage = quantizeTiles(palettes, reducedImageData, false);
+                updateQuantizedImage(resultImage);
             }
         }
-        if (options.verbose) printf("MSE: %0.0f", mse);
+        if (options.verbose) printf("MSE: %0.0f\n", mse);
         // if (options.verbose) printf((performance.now() - t1).toFixed(0) + " ms");
     }
 
@@ -319,12 +319,10 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     if (!useDither)
         palettes = reducePalettes(palettes, options.bitsPerChannel);
 
-    // @ CURRENT LOC HERE
-    /*
     const int finalIterations = iterations * 10;
-    let nextUpdate = iterations;
-    for (let iteration = 0; iteration < finalIterations; iteration++) {
-        const nextPixel = pixels[randomShuffle.next()];
+    int nextUpdate = iterations;
+    for (int iteration = 0; iteration < finalIterations; iteration++) {
+        const pixelEntry nextPixel = pixels[randomShuffle.next()];
         movePalettesCloser(palettes, tiles, nextPixel, finalAlpha);
         if (iteration >= nextUpdate) {
             nextUpdate += iterations;
@@ -332,13 +330,17 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
             updatePalettes(palettes, false);
         }
     }
-    console.log("Normal final: " + meanSquareError(palettes, tiles).toFixed(0));
-    console.log("Dither final: " + meanSquareErrorDither(palettes, tiles).toFixed(0));
+    if (options.verbose) printf("Normal final error: %0.0f\n", meanSquareError(palettes, tiles));
+    if (options.verbose) printf("Dither final error: %0.0f\n", meanSquareErrorDither(palettes, tiles));
+
     updateProgress(prog[2]);
     updatePalettes(palettes, false);
+
+/*
     if (!useDither) {
         palettes = reducePalettes(palettes, options.bitsPerChannel);
-        for (let i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++) {
+    // @ CURRENT LOC HERE
             palettes = kMeans(palettes, tiles);
             updateProgress(prog[2] + ((prog[3] - prog[2]) * (i + 1)) / 3);
             updatePalettes(palettes, false);
@@ -346,11 +348,11 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     }
     palettes = reducePalettes(palettes, options.bitsPerChannel);
     updatePalettes(palettes, true);
-    updateQuantizedImage(quantizeTiles(palettes, reducedImageData, useDither));
-    console.log("> MSE: " + meanSquareError(palettes, tiles).toFixed(2));
-    console.log(`> Time: ${((performance.now() - t0) / 1000).toFixed(2)} sec`);
-    */
-
+    Image resultImage = quantizeTiles(palettes, reducedImageData, useDither);
+    updateQuantizedImage(resultImage);
+    if (options.verbose) printf("MSE: %0.0f\n", meanSquareError(palettes, tiles));
+    // if (options.verbose) printf(`> Time: ${((performance.now() - t0) / 1000).toFixed(2)} sec`);
+ */
     return EXIT_SUCCESS;
 }
 
