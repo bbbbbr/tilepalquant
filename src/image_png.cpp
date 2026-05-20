@@ -53,7 +53,7 @@ int loadImageRGBAFromPNG(quantOptions & options, Image & sourceImageRGBA) {
 // Load png and return RGBA8888 buffer along with width and height of image
 int saveImageRGBAToPNG(quantOptions & options, Image & image) {
 
-    int colorCount = image.paletteData.size() / RGB888_SZ;
+    int colorCount = image.paletteData.size(); // paletteData is an array of rgb888 (3x8 bits) colors
     if ((colorCount > 0) && (colorCount <= 256)) {
 
         // Note: ".totalPaletteColors" reflects the maximum possible output quantized palette size if all colors are populated, but in various initial iterations they may not be
