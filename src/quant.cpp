@@ -1233,6 +1233,11 @@ static void extractAllPixels(vector <Tile> & tiles, vector <pixelEntry> & pixels
 // function quantizeTiles(palettes, image, useDither) {
 static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Image & image, const bool useDither) {
     // const { tileWidth, tileHeight, bitsPerChannel, colorZeroBehaviour, colorZeroValue, numPalettes, colorsPerPalette, } = quantizationOptions;
+    if (options.verbose) printf("* tileWidth:%d, tileHeight:%d, bitsPerChannel:%d\n"
+                                "  colorZeroBehaviour:%d, colorZeroValue:rgb(%0.0f, %0.0f, %0.0f), numPalettes:%d, colorsPerPalette:%d\n",
+                                options.tileWidth, options.tileHeight, options.bitsPerChannel,
+                                options.colorZeroBehaviour, options.colorZeroValue.ch.r, options.colorZeroValue.ch.g, options.colorZeroValue.ch.b,
+                                options.numPalettes, options.colorsPerPalette);
     const bool imageIsReduced = options.ditherMethod != Opts::ditherOff;
 
     int adjustedIndex = 0;
@@ -1495,6 +1500,7 @@ static void expandPalettesByOneColor(vector <vector <rgbColor>> & palettes, vect
     }
 }
 /*
+// TODO: Dead function?
 function colorQuantize1Palette(pixels, randomShuffle, colorsPerPalette) {
     int iterations = (int)(options.fractionOfPixels * (float)pixels.size());
     if (options.dither == Dither.Slow) {
