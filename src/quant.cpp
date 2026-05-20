@@ -29,7 +29,7 @@ static double toSrgb(double x);
 static void toSrgbColor(rgbColor & color);
 static double brightness(const rgbColor & color);
 static vector <vector <rgbColor>> replaceWeakestColors(const vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, float minColorFactor, float minPaletteFactor, bool replacePalettes);
-
+static vector <vector <rgbColor>> kMeans(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles);
 static float meanSquareError(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles);
 static float meanSquareErrorDither(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles);
 static Candidate getClosestColor(const vector <rgbColor> & palette, const rgbColor & color);
@@ -336,23 +336,22 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     updateProgress(prog[2]);
     updatePalettes(palettes, false);
 
-/*
     if (!useDither) {
         palettes = reducePalettes(palettes, options.bitsPerChannel);
         for (int i = 0; i < 3; i++) {
-    // @ CURRENT LOC HERE
             palettes = kMeans(palettes, tiles);
             updateProgress(prog[2] + ((prog[3] - prog[2]) * (i + 1)) / 3);
             updatePalettes(palettes, false);
         }
     }
+
     palettes = reducePalettes(palettes, options.bitsPerChannel);
     updatePalettes(palettes, true);
     Image resultImage = quantizeTiles(palettes, reducedImageData, useDither);
     updateQuantizedImage(resultImage);
     if (options.verbose) printf("MSE: %0.0f\n", meanSquareError(palettes, tiles));
     // if (options.verbose) printf(`> Time: ${((performance.now() - t0) / 1000).toFixed(2)} sec`);
- */
+
     return EXIT_SUCCESS;
 }
 
@@ -389,8 +388,7 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
 
     // TODO: DEBUG
     if (options.verbose) {
-        printf("sortPalettes()\n");
-        printf("== sortPalettes (Start) ==\n");
+        printf("sortPalettes() startIndex=%d, numColors=%d\n", startIndex, numColors);
         printPalettes(palettes);
     }
 
@@ -404,6 +402,8 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     // const colorIndex = zeros3(numPalettes, numPalettes, numColors);
     vector <vector <vector <int>>> colorIndex (numPalettes,  vector <vector <int>>(numPalettes, vector <int>(numColors,0) ) );
 
+if (options.verbose) printf("sortPalettes():1 loop\n");
+
     for (int i = 0; i < numPalettes; i++) {
         for (int j = 0; j < numPalettes; j++) {
             for (int k = 0; k < numColors; k++) {
@@ -411,8 +411,13 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
             }
         }
     }
+
+if (options.verbose) printf("sortPalettes():2 loop\n");
+
     for (int p1 = 0; p1 < numPalettes - 1; p1++) {
         for (int p2 = p1 + 1; p2 < numPalettes; p2++) {
+
+if (options.verbose) printf("sortPalettes():2.b loop: (%d,%d)\n", p1, p2);
 
             // index is a 1D array copied from colorIndex[n][n][..N..]
             vector <int> index = colorIndex[p1][p2];
@@ -427,6 +432,14 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
                     i1 = i2;
                     i2 = tmp;
                 }
+if (options.verbose) printf("sortPalettes():2.c loop: (%d,%d): i1=%d, i2=%d\n", p1, p2, i1, i2);
+
+if (i1 >= (int)palettes[p1].size()) printf("----->!! 1.idx [p1][i1] > pal size!\n");
+if (i2 >= (int)palettes[p1].size()) printf("----->!! 2.idx [p1][i2] > pal size!\n");
+if (index[i1] >= (int)palettes[p2].size()) printf("----->!! 3.idx [p2][index[i1]] > pal size!\n");
+if (index[i2] >= (int)palettes[p2].size()) printf("----->!! 4.idx [p2][index[i2]] > pal size!\n");
+
+// Out of bounds memory access here, unclear if missing expected colors (bug) is root problem (setting aside bad range assumptions) or if it's just incorrect handling of vars
                 const rgbColor p1i1 = palettes[p1][i1];
                 const rgbColor p1i2 = palettes[p1][i2];
                 const rgbColor p2i1 = palettes[p2][index[i1]];
@@ -440,17 +453,23 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
                     index[i1] = index[i2];
                     index[i2] = tmp;
                 }
+
             }
             double sum = 0;
             for (int i = 0; i < numColors; i++) {
+if (options.verbose) printf("sortPalettes():2.d loop: (%d,%d): i=%d, index[i]=%d\n", p1, p2, i, index[i]);
                 const rgbColor p1i = palettes[p1][i];
                 const rgbColor p2i = palettes[p2][index[i]];
                 sum += colorDistance(p1i, p2i);
             }
+if (options.verbose) printf("sortPalettes():2.d loop: +1 vers:(%d,%d)\n", p1 + 1, p2 + 1);
             paletteDist[p1 + 1][p2 + 1] = sum;
             paletteDist[p2 + 1][p1 + 1] = sum;
         }
     }
+
+if (options.verbose) printf("sortPalettes():3 loop\n");
+
     for (int p1 = 1; p1 < numPalettes; p1++) {
         for (int p2 = 0; p2 < p1; p2++) {
             // index and revIndex are arrays of indexes found at [n][n] in 3D array colorIndex
@@ -462,6 +481,8 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
             }
         }
     }
+
+if (options.verbose) printf("sortPalettes():4 loop\n");
 
     // const palIndex = [];
     vector <int> palIndex;
@@ -483,6 +504,9 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
             }
         }
     }
+
+if (options.verbose) printf("sortPalettes():5 loop\n");
+
     // const pal1 = palettes[palIndex[1] - 1];
     // const p1Index = [];
     vector <rgbColor> pal1 = palettes[palIndex[1] - 1];
@@ -490,6 +514,8 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     for (int i = 0; i < numColors + 2; i++) {
         p1Index.push_back(i);
     }
+
+if (options.verbose) printf("sortPalettes():6 loop\n");
 
     // Creates a 2D array initialized with zeros // TODO: of type double probably
     // const p1Dist = zeros2(numColors + 2, numColors + 2);
@@ -500,6 +526,8 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
             p1Dist[i][j] = colorDistance(pal1[i - 1], pal1[j - 1]);
         }
     }
+
+if (options.verbose) printf("sortPalettes():7 loop\n");
 
     if (numColors > 2) {
         for (int iteration = 0; iteration < paletteIterations; iteration++) {
@@ -517,6 +545,8 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
         }
     }
 
+if (options.verbose) printf("sortPalettes():8 loop\n");
+
     // Creates a 2D array initialized with zeros // TODO: of type double probably
     // const pIndex = zeros2(numPalettes, numColors);
     vector <vector <double>> pIndex (numPalettes,  vector <double>(numColors, 0.0) );
@@ -526,6 +556,8 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
         }
     }
 
+if (options.verbose) printf("sortPalettes():9 loop\n");
+
     for (int i = 1; i < numPalettes; i++) {
         for (int j = 0; j < numColors; j++) {
             const int p1 = palIndex[i] - 1;
@@ -533,6 +565,7 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
             pIndex[i][j] = colorIndex[p1][p2][pIndex[i - 1][j]];
         }
     }
+if (options.verbose) printf("sortPalettes():10 loop\n");
     if (numColors >= 4) {
         for (int i = 1; i < numPalettes; i++) {
             const int p1 = palIndex[i] - 1;
@@ -591,6 +624,7 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
             }
         }
     }
+if (options.verbose) printf("sortPalettes():11 loop\n");
     // const pals = [];
     vector <vector <rgbColor>> pals;
     for (int i = 0; i < numPalettes; i++) {
@@ -845,58 +879,70 @@ static vector <vector <rgbColor>> replaceWeakestColors(const vector <vector <rgb
     return result;
 }
 
-/*
-function kMeans(palettes, tiles) {
-    const colorZeroBehaviour = options.colorZeroBehaviour;
-    const counts = [];
-    const sumColors = [];
-    for (let i = 0; i < palettes.length; i++) {
-        const c = [];
-        const colors = [];
-        for (let j = 0; j < palettes[i].length; j++) {
-            c.push(0);
-            colors.push([0, 0, 0]);
-        }
-        counts.push(c);
-        sumColors.push(colors);
+
+// function kMeans(palettes, tiles) {
+static vector <vector <rgbColor>> kMeans(const vector <vector <rgbColor>> & palettes, const vector <Tile> & tiles) {
+    const unsigned int colorZeroBehaviour = options.colorZeroBehaviour;
+    vector <vector <int>> counts( palettes.size() );
+    vector <vector <rgbColor>> sumColors( palettes.size() );
+
+    for (int i = 0; i < (int)palettes.size(); i++) {
+        // const c = [];
+        // const colors = [];
+        // for (let j = 0; j < palettes[i].length; j++) {
+        //     c.push(0);
+        //     colors.push([0, 0, 0]);
+        // }
+        // counts.push(c);
+        // sumColors.push(colors);
+        const rgbColor initColor = {0, 0, 0};
+        counts[i].resize(palettes[i].size(), 0);
+        sumColors[i].resize(palettes[i].size(), initColor);
     }
-    for (const tile of tiles) {
-        if (options.dither == Dither.Slow) {
-            const palIndex = getClosestPaletteIndexDither(palettes, tile);
-            for (const pixel of tile.pixels) {
-                const [colIndex, ,] = getClosestColorDither(palettes[palIndex], pixel);
+
+    for (const Tile & tile : tiles) {
+        if (options.ditherMethod == Opts::ditherSlow) {
+            const int palIndex = getClosestPaletteIndexDither(palettes, tile);
+            for (const pixelEntry & pixel : tile.pixels) {
+                // const [colIndex, ,] = getClosestColorDither(palettes[palIndex], pixel);
+                const Candidate result = getClosestColorDither(palettes[palIndex], pixel);
+                const int colIndex = result.colorIndex;
                 counts[palIndex][colIndex] += 1;
                 addColor(sumColors[palIndex][colIndex], pixel.color);
             }
         }
         else {
-            const palIndex = getClosestPaletteIndex(palettes, tile);
-            for (let i = 0; i < tile.colors.length; i++) {
-                const [colIndex] = getClosestColor(palettes[palIndex], tile.colors[i]);
+            const int palIndex = getClosestPaletteIndex(palettes, tile);
+            for (int i = 0; i < (int)tile.colors.size(); i++) {
+                // const [colIndex] = getClosestColor(palettes[palIndex], tile.colors[i]);
+                const Candidate result = getClosestColor(palettes[palIndex], tile.colors[i]);
+                const int colIndex = result.colorIndex;
                 counts[palIndex][colIndex] += tile.counts[i];
-                const color = cloneColor(tile.colors[i]);
+                rgbColor color = tile.colors[i];
                 scaleColor(color, tile.counts[i]);
                 addColor(sumColors[palIndex][colIndex], color);
             }
         }
     }
-    let sharedColorIndex = -1;
-    if (colorZeroBehaviour == ColorZeroBehaviour.Shared) {
+
+    int sharedColorIndex = -1;
+    if (colorZeroBehaviour == Opts::indexZeroShared) {
         sharedColorIndex = 0;
     }
-    for (let i = 0; i < sumColors.length; i++) {
-        for (let j = 0; j < sumColors[i].length; j++) {
-            if (counts[i][j] == 0 || j == sharedColorIndex) {
-                sumColors[i][j] = cloneColor(palettes[i][j]);
+    for (int i = 0; i < (int)sumColors.size(); i++) {
+        for (int j = 0; j < (int)sumColors[i].size(); j++) {
+            if ((counts[i][j] == 0) || (j == sharedColorIndex)) {
+                sumColors[i][j] = palettes[i][j];
             }
             else {
                 scaleColor(sumColors[i][j], 1.0 / counts[i][j]);
             }
         }
     }
+
     return sumColors;
 }
-*/
+
 
 
 
@@ -1500,7 +1546,7 @@ static void expandPalettesByOneColor(vector <vector <rgbColor>> & palettes, vect
     }
 }
 /*
-// TODO: Dead function?
+// TODO: Dead/unused function?
 function colorQuantize1Palette(pixels, randomShuffle, colorsPerPalette) {
     int iterations = (int)(options.fractionOfPixels * (float)pixels.size());
     if (options.dither == Dither.Slow) {
@@ -1682,7 +1728,7 @@ static void printPalettes(const vector <vector <rgbColor>> & palettes) {
     for (int palId = 0; palId < (int)palettes.size(); palId++) {
         printf("--> Palette [%d] Size: %d \n", palId, (int)palettes[palId].size());
         for (int colorId = 0; colorId < (int)palettes[palId].size(); colorId++) {
-            printf("  - Pal Color[%d][%d] = r:%0.2f, g:%0.2f, b:%0.2f\n",
+            printf("    - Color[%d][%d] = r:%0.2f, g:%0.2f, b:%0.2f\n",
                     palId, colorId, palettes[palId][colorId].ch.r, palettes[palId][colorId].ch.g, palettes[palId][colorId].ch.b);
         }
     }
