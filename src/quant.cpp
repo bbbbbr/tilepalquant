@@ -547,13 +547,11 @@ if (options.verbose) printf("sortPalettes():7 loop\n");
 
 if (options.verbose) printf("sortPalettes():8 loop\n");
 
-    // Creates a 2D array initialized with zeros // TODO: of type double probably
+    // Creates a 2D array initialized with zeros
     // const pIndex = zeros2(numPalettes, numColors);
-    vector <vector <double>> pIndex (numPalettes,  vector <double>(numColors, 0.0) );
-    for (int i = 1; i <= numColors; i++) {
-        for (int j = 1; j <= numColors; j++) {
-            pIndex[i][j] = p1Index[i + 1] - 1;
-        }
+    vector <vector <int>> pIndex (numPalettes,  vector <int>(numColors, 0) );
+    for (int i = 0; i < numColors; i++) {
+        pIndex[0][i] = p1Index[i + 1] - 1;
     }
 
 if (options.verbose) printf("sortPalettes():9 loop\n");
