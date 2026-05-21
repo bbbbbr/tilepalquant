@@ -1551,7 +1551,7 @@ static void expandPalettesByOneColor(vector <vector <rgbColor>> & palettes, vect
     }
 
     for (int i = 0; i < (int)palettes.size(); i++) {
-        vector <rgbColor> colors = palettes[i];
+        vector <rgbColor> & colors = palettes[i];
         const int splitIndex           = splitIndexes[i];
         colors.push_back(colors[splitIndex]);
     }
