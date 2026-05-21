@@ -769,8 +769,8 @@ static vector <vector <rgbColor>> replaceWeakestColors(const vector <vector <rgb
     vector <vector <rgbColor>> result;
     if (palettes[0].size() > 1) {
 
-        vector <vector <double>> totalColorMse;
-        vector <vector <double>> secondColorMse;
+        vector <vector <double>> totalColorMse(palettes.size());
+        vector <vector <double>> secondColorMse(palettes.size());
         for (int j = 0; j < (int)palettes.size(); j++) {
             totalColorMse[j].resize(palettes[j].size(), 0.0);
             secondColorMse[j].resize(palettes[j].size(), 0.0);
