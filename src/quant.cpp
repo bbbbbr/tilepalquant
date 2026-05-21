@@ -1373,8 +1373,11 @@ static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Im
                         quantizedImage.data[index + RGBA8_B] = image.data[index + RGBA8_B];
                         quantizedImage.data[index + RGBA8_ALPHA] = image.data[index + RGBA8_ALPHA];
                         // Set paletteIndex to color zero of closest palette (perhaps since it's typically transparent on consoles)
+                        // Changed from js version, see note below about the "pal index calc" bug
+                        // quantizedImage.colorIndexes[pngIndex] =
+                        //    closestPaletteIndex * options.colorsPerPalette;
                         quantizedImage.colorIndexes[pngIndex] =
-                            closestPaletteIndex * options.colorsPerPalette;
+                            closestPaletteIndex * (int)palette.size();
                     }
                     else {
                         int closestColorIndex = 0;
@@ -1398,8 +1401,18 @@ static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Im
                         quantizedImage.data[index + RGBA8_G] = (uint8_t)paletteColor.ch.g;
                         quantizedImage.data[index + RGBA8_B] = (uint8_t)paletteColor.ch.b;
                         quantizedImage.data[index + RGBA8_ALPHA] = (uint8_t)ALPHA_FULLY_OPAQUE;
+                        // NOTE: BUG: The commented pal index calc below is a bug in the original code
+                        //            when used for intermediate stage preview images. It assumes
+                        //            the preview image has the same number of colors per sub-palette
+                        //            as the final image, but that's not the case, it may have as
+                        //            few as 1 color per palette.
+                        //            So (closestPaletteIndex x options.colorsPerPalette) may be far outside
+                        //            the range of actual palette colors.
+                        //            Instead using (closestPaletteIndex x palette.size())
+                        // quantizedImage.colorIndexes[pngIndex] =
+                        //    (closestPaletteIndex * options.colorsPerPalette) + closestColorIndex + adjustedIndex;
                         quantizedImage.colorIndexes[pngIndex] =
-                            (closestPaletteIndex * options.colorsPerPalette) + closestColorIndex + adjustedIndex;
+                            (closestPaletteIndex * (int)palette.size()) + closestColorIndex + adjustedIndex;
                     }
                 }
             }
