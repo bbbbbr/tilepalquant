@@ -53,6 +53,12 @@ clean:
 	$(DEL) $(COBJ) $(BIN) $(DEPS)
 
 
+perf_capture:
+	valgrind --callgrind-out-file=bin/callgrind.out --tool=callgrind bin/tilepalquant carina-nebula.png -o bin/output.png
+
+perf_analyze:
+	kcachegrind bin/callgrind.out
+
 
 # For -MMD and -MP
 # Dependencies
