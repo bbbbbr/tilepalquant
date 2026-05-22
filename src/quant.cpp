@@ -1043,8 +1043,19 @@ static Candidate getClosestColorDither(const vector <rgbColor> & palette, const 
     return candidates[index];
 }
 
+// This is the most heavily called function in the conversion process (can be 200+ million)
+// so the speed up here makes a big difference in total conversion time
+//
+// #define COLOR_DISTANCE_USE_POW
+// Calling pow(n,2) is about 14x slower than (n * n)
 static double colorDistance(const rgbColor & a, const rgbColor & b) {
-    return 2 * pow((a.ch.r - b.ch.r), 2) + 4 * pow((a.ch.g - b.ch.g), 2) + pow((a.ch.b - b.ch.b), 2);
+    #ifdef COLOR_DISTANCE_USE_POW
+        return (2 * pow((a.ch.r - b.ch.r), 2)) + (4 * pow((a.ch.g - b.ch.g), 2)) + pow((a.ch.b - b.ch.b), 2);
+    #else
+        return    (2 * ((a.ch.r - b.ch.r) * (a.ch.r - b.ch.r)))
+                + (4 * ((a.ch.g - b.ch.g) * (a.ch.g - b.ch.g)))
+                +      ((a.ch.b - b.ch.b) * (a.ch.b - b.ch.b));
+    #endif
 }
 
 // function paletteDistance(palette, tile) {
