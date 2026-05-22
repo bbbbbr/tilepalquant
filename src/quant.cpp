@@ -74,9 +74,10 @@ static int minIndexDbl(vector <double> values);
 // Not part of original JS version
 static Tile & getParentTile(vector <Tile> & tiles, const pixelEntry & pixel);
 static double randRange0to1(void);
-static int    indexOf(const vector <int> & vec, int matchValue);
+static int indexOf(const vector <int> & vec, int matchValue);
 static rgbColorU8 rgbColorToU8(const rgbColor & col);
-static void   printPalettes(const vector <vector <rgbColor>> & palettes);
+static void printPalettes(const vector <vector <rgbColor>> & palettes);
+static void printPaletteU8(const vector <rgbColorU8> & palette);
 
 /*
 
@@ -114,8 +115,7 @@ static void updateProgress(float progress) {
 
 static void updateQuantizedImage(Image & image) {
 //    postMessage({ action: Action.UpdateQuantizedImage, imageData: image });
-    // TODO: TEMP: DEBUG: export a PNG as progress
-    if (options.verbose) printf("* Shim: UpdateQuantizedImage() - writing out test png of intermediate processed image1\n");
+    // TODO: TEMP: DEBUG: export a PNG as progress - consider turning off or making optional
     saveImageRGBAToPNG(options, image);
 }
 
@@ -123,7 +123,7 @@ static void updateQuantizedImage(Image & image) {
 static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bool doSorting) {
     vector <vector <rgbColor>> pal = palettes;
 
-    if (options.verbose) printf("updatePalettes()\n");
+    if (options.verboseDebug) printf("updatePalettes()\n");
 
     int startIndex = 0;
     if ((options.colorZeroBehaviour == Opts::indexZeroTranspFromColor) ||
@@ -195,10 +195,8 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
         // for (let i = 0; i < image.data.length; i++) {
         //     reducedImageData.data[i] = image.data[i];
         // }
-        if (options.verbose) printf("Using Dither\n");
     }
     else {
-        if (options.verbose) printf("No Dither\n");
         for (int i = 0; i < (int)image.data.size(); i++) {
             // TODO: Seems to expect each item in the array to be an RGB (OR RGBA ?) entry
             // If RGBA, why quantizing the Alpha channel?
@@ -211,20 +209,18 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     vector <Tile> tiles;
     extractTiles(reducedImageData, tiles);
 
-    if (options.verbose) {
-      float avgPixelsPerTile = 0;
-      for (const Tile & tile : tiles) {
-         avgPixelsPerTile += tile.colors.size();
-      }
-      avgPixelsPerTile /= tiles.size();
-      printf("Colors per tile: %0.2f\n", avgPixelsPerTile);
-   }
+    if (options.verboseDebug) {
+        float avgPixelsPerTile = 0;
+        for (const Tile & tile : tiles) {
+            avgPixelsPerTile += tile.colors.size();
+        }
+        avgPixelsPerTile /= tiles.size();
+        printf("Colors per tile: %0.2f\n", avgPixelsPerTile);
+    }
 
-    if (options.verbose) printf("extractAllPixels()\n");  // DEBUG
     vector <pixelEntry> pixels;
     extractAllPixels(tiles, pixels);
 
-    if (options.verbose) printf("randomShuffle.init()\n");  // DEBUG
     RandomShuffle randomShuffle;
     randomShuffle.init(pixels.size());
 
@@ -238,7 +234,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     // const meanSquareErr = meanSquareError;
     #define meanSquareErrSelected meanSquareError
     if (options.ditherMethod == Opts::ditherSlow) {
-        // meanSquareErr = meanSquareErrorDither;  // Commented out in JS source
+        // // meanSquareErr = meanSquareErrorDither;  // Commented out in JS source
         iterations /= 5;
         alpha = 0.1;
         finalAlpha = 0.02;
@@ -252,9 +248,11 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     if (options.ditherMethod == Opts::ditherOff) {
         prog[3] = 94;
     }
-    if (options.verbose) printf("colorQuantize1Color()\n");  // DEBUG
+
     vector <vector <rgbColor>> palettes;
     colorQuantize1Color(tiles, pixels, randomShuffle, palettes);
+
+    if (options.verboseDebug) printPalettes((const vector <vector <rgbColor>>)palettes);
 
     int startIndex = 2;
     if (options.colorZeroBehaviour == Opts::indexZeroShared) {
@@ -270,9 +268,12 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
 
     if (showProgress) {
         Image resultImage = quantizeTiles(palettes, reducedImageData, false);
+        if (options.verboseDebug) printPaletteU8(resultImage.paletteData);
         updateQuantizedImage(resultImage);
     }
+
     for (int numColors = startIndex; numColors <= endIndex; numColors++) {
+        if (options.verboseDebug) printf("expandPalettesByOneColor() loop: numcolors=%d, startIndex=%d, endIndex=%d\n", numColors, startIndex, endIndex);
         expandPalettesByOneColor(palettes, tiles, pixels, randomShuffle);
         updateProgress((prog[0] * numColors) / options.colorsPerPalette);
         updatePalettes(palettes, false);
@@ -281,6 +282,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
             updateQuantizedImage(resultImage);
         }
     }
+    if (options.verboseDebug) printPalettes(palettes);
 
     float minMse = meanSquareErrSelected(palettes, tiles);
     vector <vector <rgbColor>> minPalettes = palettes;
@@ -308,8 +310,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
                 updateQuantizedImage(resultImage);
             }
         }
-        if (options.verbose) printf("MSE: %0.0f\n", mse);
-        // if (options.verbose) printf((performance.now() - t1).toFixed(0) + " ms");
+        if (options.verboseDebug) printf("Mean Square Error: %0.0f\n", mse);
     }
 
     if (useMin) {
@@ -330,8 +331,8 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
             updatePalettes(palettes, false);
         }
     }
-    if (options.verbose) printf("Normal final error: %0.0f\n", meanSquareError(palettes, tiles));
-    if (options.verbose) printf("Dither final error: %0.0f\n", meanSquareErrorDither(palettes, tiles));
+    if (options.verboseDebug) printf("Normal final error: %0.0f\n", meanSquareError(palettes, tiles));
+    if (options.verboseDebug) printf("Dither final error: %0.0f\n", meanSquareErrorDither(palettes, tiles));
 
     updateProgress(prog[2]);
     updatePalettes(palettes, false);
@@ -349,8 +350,9 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     updatePalettes(palettes, true);
     Image resultImage = quantizeTiles(palettes, reducedImageData, useDither);
     updateQuantizedImage(resultImage);
-    if (options.verbose) printf("MSE: %0.0f\n", meanSquareError(palettes, tiles));
-    // if (options.verbose) printf(`> Time: ${((performance.now() - t0) / 1000).toFixed(2)} sec`);
+
+    if (options.verbose) printf("Final Mean Square Error: %0.0f\n", meanSquareError(palettes, tiles));
+    if (options.verboseDebug) printf("Processing completed\n");
 
     return EXIT_SUCCESS;
 }
@@ -387,8 +389,8 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     }
 
     // TODO: DEBUG
-    if (options.verbose) {
-        printf("sortPalettes() startIndex=%d, numColors=%d\n", startIndex, numColors);
+    if (options.verboseDebug) {
+        printf("sortPalettes() startIndex=%d, numPalettes=%d, numColors=%d\n", startIndex, numPalettes, numColors);
         printPalettes(palettes);
     }
 
@@ -402,7 +404,6 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     // const colorIndex = zeros3(numPalettes, numPalettes, numColors);
     vector <vector <vector <int>>> colorIndex (numPalettes,  vector <vector <int>>(numPalettes, vector <int>(numColors,0) ) );
 
-if (options.verbose) printf("sortPalettes():1 loop\n");
 
     for (int i = 0; i < numPalettes; i++) {
         for (int j = 0; j < numPalettes; j++) {
@@ -412,12 +413,10 @@ if (options.verbose) printf("sortPalettes():1 loop\n");
         }
     }
 
-if (options.verbose) printf("sortPalettes():2 loop\n");
 
     for (int p1 = 0; p1 < numPalettes - 1; p1++) {
         for (int p2 = p1 + 1; p2 < numPalettes; p2++) {
 
-if (options.verbose) printf("sortPalettes():2.b loop: (%d,%d)\n", p1, p2);
 
             // index is a 1D array copied from colorIndex[n][n][..N..]
             vector <int> index = colorIndex[p1][p2];
@@ -432,14 +431,12 @@ if (options.verbose) printf("sortPalettes():2.b loop: (%d,%d)\n", p1, p2);
                     i1 = i2;
                     i2 = tmp;
                 }
-if (options.verbose) printf("sortPalettes():2.c loop: (%d,%d): i1=%d, i2=%d\n", p1, p2, i1, i2);
 
-if (i1 >= (int)palettes[p1].size()) printf("----->!! 1.idx [p1][i1] > pal size!\n");
-if (i2 >= (int)palettes[p1].size()) printf("----->!! 2.idx [p1][i2] > pal size!\n");
-if (index[i1] >= (int)palettes[p2].size()) printf("----->!! 3.idx [p2][index[i1]] > pal size!\n");
-if (index[i2] >= (int)palettes[p2].size()) printf("----->!! 4.idx [p2][index[i2]] > pal size!\n");
-
-// Out of bounds memory access here, unclear if missing expected colors (bug) is root problem (setting aside bad range assumptions) or if it's just incorrect handling of vars
+                // NOTE: Potential out of bounds memory access/buffer overrun here based on
+                //       reference implementation behavior, given certain conditions.
+                //       There are potentially incorrect range assumptions based on number
+                //       of colors, however if processing goes as intended then it does not
+                //       appear to exceed the actual range.
                 const rgbColor p1i1 = palettes[p1][i1];
                 const rgbColor p1i2 = palettes[p1][i2];
                 const rgbColor p2i1 = palettes[p2][index[i1]];
@@ -457,18 +454,15 @@ if (index[i2] >= (int)palettes[p2].size()) printf("----->!! 4.idx [p2][index[i2]
             }
             double sum = 0;
             for (int i = 0; i < numColors; i++) {
-if (options.verbose) printf("sortPalettes():2.d loop: (%d,%d): i=%d, index[i]=%d\n", p1, p2, i, index[i]);
                 const rgbColor p1i = palettes[p1][i];
                 const rgbColor p2i = palettes[p2][index[i]];
                 sum += colorDistance(p1i, p2i);
             }
-if (options.verbose) printf("sortPalettes():2.d loop: +1 vers:(%d,%d)\n", p1 + 1, p2 + 1);
             paletteDist[p1 + 1][p2 + 1] = sum;
             paletteDist[p2 + 1][p1 + 1] = sum;
         }
     }
 
-if (options.verbose) printf("sortPalettes():3 loop\n");
 
     for (int p1 = 1; p1 < numPalettes; p1++) {
         for (int p2 = 0; p2 < p1; p2++) {
@@ -482,7 +476,6 @@ if (options.verbose) printf("sortPalettes():3 loop\n");
         }
     }
 
-if (options.verbose) printf("sortPalettes():4 loop\n");
 
     // const palIndex = [];
     vector <int> palIndex;
@@ -505,7 +498,6 @@ if (options.verbose) printf("sortPalettes():4 loop\n");
         }
     }
 
-if (options.verbose) printf("sortPalettes():5 loop\n");
 
     // const pal1 = palettes[palIndex[1] - 1];
     // const p1Index = [];
@@ -515,7 +507,6 @@ if (options.verbose) printf("sortPalettes():5 loop\n");
         p1Index.push_back(i);
     }
 
-if (options.verbose) printf("sortPalettes():6 loop\n");
 
     // Creates a 2D array initialized with zeros // TODO: of type double probably
     // const p1Dist = zeros2(numColors + 2, numColors + 2);
@@ -527,7 +518,6 @@ if (options.verbose) printf("sortPalettes():6 loop\n");
         }
     }
 
-if (options.verbose) printf("sortPalettes():7 loop\n");
 
     if (numColors > 2) {
         for (int iteration = 0; iteration < paletteIterations; iteration++) {
@@ -545,7 +535,6 @@ if (options.verbose) printf("sortPalettes():7 loop\n");
         }
     }
 
-if (options.verbose) printf("sortPalettes():8 loop\n");
 
     // Creates a 2D array initialized with zeros
     // const pIndex = zeros2(numPalettes, numColors);
@@ -554,7 +543,6 @@ if (options.verbose) printf("sortPalettes():8 loop\n");
         pIndex[0][i] = p1Index[i + 1] - 1;
     }
 
-if (options.verbose) printf("sortPalettes():9 loop\n");
 
     for (int i = 1; i < numPalettes; i++) {
         for (int j = 0; j < numColors; j++) {
@@ -563,7 +551,6 @@ if (options.verbose) printf("sortPalettes():9 loop\n");
             pIndex[i][j] = colorIndex[p1][p2][pIndex[i - 1][j]];
         }
     }
-if (options.verbose) printf("sortPalettes():10 loop\n");
     if (numColors >= 4) {
         for (int i = 1; i < numPalettes; i++) {
             const int p1 = palIndex[i] - 1;
@@ -622,7 +609,6 @@ if (options.verbose) printf("sortPalettes():10 loop\n");
             }
         }
     }
-if (options.verbose) printf("sortPalettes():11 loop\n");
     // const pals = [];
     vector <vector <rgbColor>> pals;
     for (int i = 0; i < numPalettes; i++) {
@@ -635,7 +621,7 @@ if (options.verbose) printf("sortPalettes():11 loop\n");
         pals.push_back(pal);
     }
     // TODO: DEBUG
-    if (options.verbose) {
+    if (options.verboseDebug) {
         printf("== sortPalettes (End) ==\n");
         printPalettes(pals);
     }
@@ -862,7 +848,6 @@ static vector <vector <rgbColor>> replaceWeakestColors(const vector <vector <rgb
         (minPaletteIndex != maxPaletteIndex) &&
         (removedPaletteMse[minPaletteIndex] < (minPaletteFactor * totalPaletteMse[maxPaletteIndex])) ) {
 
-        if (options.verbose) printf("replaceWeakestColors(): replaced palette %d\n", minPaletteIndex);
 
         // while (result[minPaletteIndex].size() > 0)
         //     result[minPaletteIndex].pop();
@@ -1199,7 +1184,7 @@ static Tile extractTile(const Image & image, const unsigned int startX, const un
 }
 
 // TODO: Inline?
-// isPixelTransparent(x, y) {
+//    function isPixelTransparent(x, y) {
 bool isPixelTransparent(const Image & image, const unsigned int x, const unsigned int y) {
     const unsigned int index = RGBA8888_SZ * (x + image.width * y);
     return ((options.colorZeroBehaviour == Opts::indexZeroTranspFromTransp) &&
@@ -1220,13 +1205,7 @@ static void extractTiles(Image & image, vector <Tile> & tiles) {
     for (unsigned int y = 0; y < image.height; y += options.tileHeight) {
         for (unsigned int x = 0; x < image.width; x += options.tileWidth) {
             const Tile tile = extractTile(image, x, y, tile_id);
-            // TODO: DEBUG TEST
-            // if (options.verbose) printf("-> Extract tile @ %4u x %4u:  colors.sz=%3zu, pixels.sz = %3zu, tilenum=%zu vs px-tilenum=%zu\n",
-            //                             x,y, tile.colors.size(), tile.pixels.size(),
-            //                             tile_id, tile.pixels[0].parent_tile_id);
-            // TODO: DEBUG TEST
-           if (tile.colors.size() == 0) printf(" -----> Empty tile\n");
-           if (tile.colors.size() == 0)
+            if (tile.colors.size() == 0)
                continue;
             tiles.push_back(tile);
             tile_id++;
@@ -1237,20 +1216,12 @@ static void extractTiles(Image & image, vector <Tile> & tiles) {
     }
 
 
-    // TODO: DEBUG TEST
-        if (options.verbose) printf("****** Num Tiles = %zu ******* \n", tiles.size());
-        // for (int i = 0; i < (int)tiles.size(); i++) {
-        //     if (tiles[i].pixels.size() > 0) {
-        //         if (options.verbose) printf("-> Saved Tile [%4zu]:  colors.sz=%3zu, pixels.sz = %3zu, tilenum=%zu vs px-tilenum=%zu\n",
-        //                                     i, tiles[i].colors.size(), tiles[i].pixels.size(),
-        //                                     i, tiles[i].pixels[0].parent_tile_id);
-        //         }
-        // }
-    // TODO: END DEBUG TEST
-    if (options.verbose) {
-       const float avgPixelsPerTile = totalPixels / tileCount;
-       printf("avg pixels per tile: %0.2f\n", avgPixelsPerTile);
-   }
+
+    if (options.verboseDebug) {
+        printf("****** Num Tiles = %zu ******* \n", tiles.size());
+        const float avgPixelsPerTile = totalPixels / tileCount;
+        printf("avg pixels per tile: %0.2f\n", avgPixelsPerTile);
+    }
 
    // return tiles;  // Changed to created by caller and passed by reference
 }
@@ -1271,13 +1242,15 @@ static void extractAllPixels(vector <Tile> & tiles, vector <pixelEntry> & pixels
             pixels.push_back(pixel);
          }
       }
-      // return pixels; // Changed to created by caller and passed by reference
+    if (options.verboseDebug) printf("extractAllPixels() : found %zu\n", pixels.size());  // DEBUG
+
+    // return pixels; // Changed to created by caller and passed by reference
 }
 
 // function quantizeTiles(palettes, image, useDither) {
 static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Image & image, const bool useDither) {
     // const { tileWidth, tileHeight, bitsPerChannel, colorZeroBehaviour, colorZeroValue, numPalettes, colorsPerPalette, } = quantizationOptions;
-    if (options.verbose) printf("* tileWidth:%d, tileHeight:%d, bitsPerChannel:%d\n"
+    if (options.verboseDebug) printf("* tileWidth:%d, tileHeight:%d, bitsPerChannel:%d\n"
                                 "  colorZeroBehaviour:%d, colorZeroValue:rgb(%0.0f, %0.0f, %0.0f), numPalettes:%d, colorsPerPalette:%d\n",
                                 options.tileWidth, options.tileHeight, options.bitsPerChannel,
                                 options.colorZeroBehaviour, options.colorZeroValue.ch.r, options.colorZeroValue.ch.g, options.colorZeroValue.ch.b,
@@ -1298,8 +1271,8 @@ static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Im
         }
     }
 
-    if (options.verbose) printf("quantizeTiles()\n");
-    if (options.verbose) printPalettes(reducedPalettes);
+    if (options.verboseDebug) printf("quantizeTiles()\n");
+    if (options.verboseDebug) printPalettes(reducedPalettes);
 
     // const transparentColor = cloneColor(options.colorZeroValue);
     rgbColor transparentColor = options.colorZeroValue;
@@ -1329,7 +1302,9 @@ static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Im
     if ((options.numPalettes * options.colorsPerPalette) <= 256) {
         addPngColors(reducedPalettes, quantizedImage.paletteData, adjustedIndex);
     }
-    else if (options.verbose) {printf("extractTile(): No preview PNG image, more than 256 colors\n"); }
+    else if (options.verboseDebug) {printf("extractTile(): Image has more than 256 colors\n"); }
+
+    if (options.verboseDebug) printPaletteU8(quantizedImage.paletteData);
 
     for (unsigned int startY = 0; startY < image.height; startY += options.tileHeight) {
         for (unsigned int startX = 0; startX < image.width; startX += options.tileWidth) {
@@ -1472,16 +1447,11 @@ static void colorQuantize1Color(vector <Tile> & tiles, vector <pixelEntry> & pix
     // Equiv to above:
     palettes.push_back(vector <rgbColor> {avgColor} );
 
+
     if (options.colorZeroBehaviour == Opts::indexZeroShared) {
         palettes[0].push_back(avgColor);
         // Overwrite entry [0][0] with colorZeroValue
         palettes[0][0] = cloneColor(options.colorZeroValue);
-    }
-
-    // TODO: DEBUG
-    if (options.verbose) {
-        printf("== colorQuantize1Color ==\n");
-        printPalettes((const vector <vector <rgbColor>>)palettes);
     }
 
     unsigned int splitIndex = 0;
@@ -1550,7 +1520,7 @@ static void expandPalettesByOneColor(vector <vector <rgbColor>> & palettes, vect
 
     for (int i = 0; i < (int)palettes.size(); i++) {
         vector <rgbColor> & colors = palettes[i];
-        const int splitIndex           = splitIndexes[i];
+        const int splitIndex = splitIndexes[i];
         colors.push_back(colors[splitIndex]);
     }
 
@@ -1741,9 +1711,17 @@ static void printPalettes(const vector <vector <rgbColor>> & palettes) {
     printf("Num Palettes: %d\n", (int)palettes.size());
     for (int palId = 0; palId < (int)palettes.size(); palId++) {
         printf("--> Palette [%d] Size: %d \n", palId, (int)palettes[palId].size());
-        for (int colorId = 0; colorId < (int)palettes[palId].size(); colorId++) {
-            printf("    - Color[%d][%d] = r:%0.2f, g:%0.2f, b:%0.2f\n",
-                    palId, colorId, palettes[palId][colorId].ch.r, palettes[palId][colorId].ch.g, palettes[palId][colorId].ch.b);
-        }
+        // for (int colorId = 0; colorId < (int)palettes[palId].size(); colorId++) {
+        //     printf("    - Color[%d][%d] = r:%0.2f, g:%0.2f, b:%0.2f\n",
+        //             palId, colorId, palettes[palId][colorId].ch.r, palettes[palId][colorId].ch.g, palettes[palId][colorId].ch.b);
+        // }
     }
+}
+
+static void printPaletteU8(const vector <rgbColorU8> & palette) {
+    printf("U8 Palette size: %d\n", (int)palette.size());
+    // for (int colorId = 0; colorId < (int)palette.size(); colorId++) {
+    //     printf("    - Color[%d] = r:%hu, g:%hu, b:%hu\n",
+    //            colorId, palette[colorId].ch.r, palette[colorId].ch.g, palette[colorId].ch.b);
+    // }
 }

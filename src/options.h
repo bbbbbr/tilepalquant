@@ -100,6 +100,7 @@ struct quantOptions {
 
     bool         use_metafile;
     bool         verbose;
+    bool         verboseDebug;
 };
 
 

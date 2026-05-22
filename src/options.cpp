@@ -82,6 +82,7 @@ static void initArgs(quantOptions * options) {
     options->randomSeed              = RAND_SEED_DEFAULT;
     options->use_metafile            = false;
     options->verbose                 = false;
+    options->verboseDebug            = false;
 }
 
 
@@ -93,7 +94,7 @@ static void showHelp(void) {
         "usage: tilepalquant <file>.png [options]\n"
         "-o <filename>         Ouput file (if not used then default is <png file>_out.png)\n"
         "-h                    Show this help output\n"
-        "-v                    Verbose output\n"
+        "-v                    Verbose output (-vv for extra debug output)\n"
         "-tile_w <width>       Width  of tiles in pixels    (default: 8, range: 1-32)\n"
         "-tile_h <height>      Height of tiles in pixels    (default: 8, range: 1-32)\n"
         "-num_pals <num>       Number of palettes           (default: 8, range: 1-16)\n"
@@ -157,6 +158,10 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
     {
         if (!strcmp(argv[i], "-h")) {
             showHelp();
+        }
+        else if (!strcmp(argv[i], "-vv")) {
+            options->verbose = true;
+            options->verboseDebug = true;
         }
         else if (!strcmp(argv[i], "-v")) {
             options->verbose = true;

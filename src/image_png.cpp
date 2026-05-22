@@ -58,31 +58,31 @@ int saveImageRGBAToPNG(quantOptions & options, Image & image) {
 
         // Note: ".totalPaletteColors" reflects the maximum possible output quantized palette size if all colors are populated, but in various initial iterations they may not be
 
-        if (options.verbose) printf("PNG export: Index Mode\n");
-        if (options.verbose) printf("PNG export: .paletteData.size() = %d, Calculated color count = %d\n", (int)image.paletteData.size(), colorCount);
+        if (options.verbose) printf("PNG export: Indexed: Color count = %d, %d x %d, to %s\n", colorCount, (int)image.width, (int)image.height, options.outputImageFilename.c_str());
         // if (options.verbose) printf("PNG export: .totalPaletteColors = %d, .paletteData.size() = %d, calculated count = %d\n", options.totalPaletteColors, (int)image.paletteData.size(), colorCount);
 
         lodepng::State png_state;
 
         // Loop through colors and add them to the png palette
         for (int c = 0; c < colorCount; c++) {
-            if (options.verbose) printf("PNG export: adding color %d : %3hu, %3hu, %3hu\n", c,
-                                image.paletteData[c].ch.r,  // r
-                                image.paletteData[c].ch.g,  // g
-                                image.paletteData[c].ch.b); // b
+            if (options.verboseDebug) printf("PNG export: adding color %d : %3hu, %3hu, %3hu\n", c,
+                                              image.paletteData[c].ch.r,
+                                              image.paletteData[c].ch.g,
+                                              image.paletteData[c].ch.b);
 
             lodepng_palette_add(&png_state.info_png.color,
-                                image.paletteData[c].ch.r, // r
-                                image.paletteData[c].ch.g, // g
-                                image.paletteData[c].ch.b, // b
+                                image.paletteData[c].ch.r,
+                                image.paletteData[c].ch.g,
+                                image.paletteData[c].ch.b,
                                 ALPHA_FULLY_OPAQUE);                        // alpha (fully opaque)
             lodepng_palette_add(&png_state.info_raw,
-                                image.paletteData[c].ch.r, // r
-                                image.paletteData[c].ch.g, // g
-                                image.paletteData[c].ch.b   , // b
+                                image.paletteData[c].ch.r,
+                                image.paletteData[c].ch.g,
+                                image.paletteData[c].ch.b,
                                 ALPHA_FULLY_OPAQUE);                        // alpha (fully opaque)
         }
 
+        // TODO: fixme: does transparency need to be turned off for indexed png output?
 
         // lodepng options: going from RAW to indexed PNG
         png_state.info_raw.colortype = LCT_PALETTE;
@@ -107,9 +107,10 @@ int saveImageRGBAToPNG(quantOptions & options, Image & image) {
 
         if (error) {
             if (options.verbose) printf("PNG export: encoder error %s\n", lodepng_error_text(error));
+            return EXIT_FAILURE;
         }
         else {
-            if (options.verbose) printf("PNG export: Writing output image to png file: %d x %d, to %s\n", image.width, image.height, options.outputImageFilename.c_str());
+            if (options.verboseDebug) printf("PNG export: Export completed\n");
             // lodepng_save_file(png_image, png_size_bytes, filename_out);
             lodepng::save_file(buffer, options.outputImageFilename);
         }
@@ -131,5 +132,6 @@ int saveImageRGBAToPNG(quantOptions & options, Image & image) {
         }
     }
 
+    if (options.verboseDebug) printf("PNG export: done\n");
     return EXIT_SUCCESS;
 }
