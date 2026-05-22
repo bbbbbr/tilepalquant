@@ -35,12 +35,12 @@ const uint8_t ditherPixelsSz[Opts::ditherPatternsCount] = {
 
 
 static string str_remove_path(string str_in);
-static void   initArgs(quantOptions * options);
+static void   initArgs(quantOptions & options);
 static void   showHelp(void);
-static void   checkLogRandArgs(quantOptions * options);
-static void   logArgs(int startIndex, int argc, const char* argv[], quantOptions * options);
-static int    processArgs(int startIndex, int argc, const char* argv[], quantOptions * options);
-static int    handleMetaFileArgs(quantOptions * options);
+static void   checkLogRandArgs(quantOptions & options);
+static void   logArgs(int startIndex, int argc, const char* argv[], quantOptions & options);
+static int    processArgs(int startIndex, int argc, const char* argv[], quantOptions & options);
+static int    handleMetaFileArgs(quantOptions & options);
 
 
 // Strip any leading path and slashes
@@ -57,32 +57,33 @@ static string str_remove_path(string str_in) {
 }
 
 
-static void initArgs(quantOptions * options) {
+static void initArgs(quantOptions & options) {
 
     //default values for some params
-    options->tileWidth        = TILE_WIDTH_DEFAULT;
-    options->tileHeight       = TILE_HEIGHT_DEFAULT;
-    options->numPalettes      = NUM_PALETTES_DEFAULT;
-    options->colorsPerPalette = COLORS_PER_PALETTE_DEFAULT;
-    options->bitsPerChannel   = BITS_PER_CHANNEL_DEFAULT;
+    options.tileWidth        = TILE_WIDTH_DEFAULT;
+    options.tileHeight       = TILE_HEIGHT_DEFAULT;
+    options.numPalettes      = NUM_PALETTES_DEFAULT;
+    options.colorsPerPalette = COLORS_PER_PALETTE_DEFAULT;
+    options.bitsPerChannel   = BITS_PER_CHANNEL_DEFAULT;
 
-    options->fractionOfPixels        = FRACTION_OF_PIXELS_DEFAULT;
+    options.fractionOfPixels        = FRACTION_OF_PIXELS_DEFAULT;
 
-    options->colorZeroBehaviour      = COLOR_ZERO_BEHAVIOUR_DEFAULT;
-    options->colorZeroValue          = COLOR_ZERO_RGB_DEFAULT;
-    options->sharedColorInput        = SHARED_COLOR_RGB_DEFAULT;
-    options->transparentColorInput   = TRANSPARENT_COLOR_RGB_DEFAULT;
+    options.colorZeroBehaviour      = COLOR_ZERO_BEHAVIOUR_DEFAULT;
+    options.colorZeroValue          = COLOR_ZERO_RGB_DEFAULT;
+    options.sharedColorInput        = SHARED_COLOR_RGB_DEFAULT;
+    options.transparentColorInput   = TRANSPARENT_COLOR_RGB_DEFAULT;
 
-    options->ditherMethod            = DITHER_METHOD_DEFAULT;
-    options->ditherPatternType       = DITHER_PATTERN_DEFAULT;
-    options->ditherWeight            = DITHER_WEIGHT_DEFAULT;
+    options.ditherMethod            = DITHER_METHOD_DEFAULT;
+    options.ditherPatternType       = DITHER_PATTERN_DEFAULT;
+    options.ditherWeight            = DITHER_WEIGHT_DEFAULT;
 
     // Options unique to the console port
-    options->argsForLoggingToOutput  = "";
-    options->randomSeed              = RAND_SEED_DEFAULT;
-    options->use_metafile            = false;
-    options->verbose                 = false;
-    options->verboseDebug            = false;
+    options.argsForLoggingToOutput  = "";
+    options.randomSeed              = RAND_SEED_DEFAULT;
+    options.use_metafile            = false;
+    options.verbose                 = false;
+    options.verboseDebug            = false;
+    options.exportPreviews          = false;
 }
 
 
@@ -110,10 +111,11 @@ static void showHelp(void) {
         "-dither_pat <pat>    Dither pattern (default: diag4)\n"
         "                        (diag4, horiz4, vert4, diag2, horiz2, vert2)\n"
         "-dither_wt <num>     Dither weight                  (default: 0.5, range: 0.01-1))\n"
-        "-use_metafile        Read extra options from file <inputfile>.meta (file missing not an error)\n"
+        "-use_metafile        Read extra options from file <inputfile>.meta (missing not an error)\n"
         "-rand_seed <num>     Specify random number seed for conversion (default: 0)\n"
         "-rand_on             Use a random value for conversion instead of fixed seed,\n"
         "                         meaning output may not be the same each time\n"
+        "-export_previews     Export multiple png previews during processing\n"
         "\n"
     );
 
@@ -126,11 +128,11 @@ static void showHelp(void) {
 
 // If random number seed generation was turned on then
 // log the generated number to the argument output as an argument
-static void checkLogRandArgs(quantOptions * options) {
-    if (options->randomSeed != RAND_SEED_DEFAULT) {
-        // "-rand_seed " + options->randomSeed
+static void checkLogRandArgs(quantOptions & options) {
+    if (options.randomSeed != RAND_SEED_DEFAULT) {
+        // "-rand_seed " + options.randomSeed
         // Build argv style array
-        string rand_arg_str = "-rand_seed " + std::to_string(options->randomSeed);
+        string rand_arg_str = "-rand_seed " + std::to_string(options.randomSeed);
         int rand_argc = 1;
         static std::vector<char const*> rand_argv;
         rand_argv.clear();
@@ -142,16 +144,16 @@ static void checkLogRandArgs(quantOptions * options) {
 }
 
 
-static void logArgs(int startIndex, int argc, const char* argv[], quantOptions * options) {
+static void logArgs(int startIndex, int argc, const char* argv[], quantOptions & options) {
 
     // Save all args for logging into output files
     for (int i = startIndex; i < argc; ++i) {
-        options->argsForLoggingToOutput.append(" ").append( str_remove_path((string)argv[i]) );
+        options.argsForLoggingToOutput.append(" ").append( str_remove_path((string)argv[i]) );
     }
 }
 
 
-static int processArgs(int startIndex, int argc, const char* argv[], quantOptions * options) {
+static int processArgs(int startIndex, int argc, const char* argv[], quantOptions & options) {
 
     //Parse argv
     for (int i = startIndex; i < argc; ++i)
@@ -160,11 +162,11 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
             showHelp();
         }
         else if (!strcmp(argv[i], "-vv")) {
-            options->verbose = true;
-            options->verboseDebug = true;
+            options.verbose = true;
+            options.verboseDebug = true;
         }
         else if (!strcmp(argv[i], "-v")) {
-            options->verbose = true;
+            options.verbose = true;
         }
         else if (!strcmp(argv[i], "-o")) {
             if ((i + 1) >= argc) {
@@ -174,40 +176,40 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
                 printf("Error: next argument after -o looks like an option instead of a filename (\"%s\")\n", argv[i + 1]);
                 return EXIT_FAILURE;
             }
-            options->outputImageFilename = argv[++i];
+            options.outputImageFilename = argv[++i];
         }
         else if (!strcmp(argv[i], "-tile_w")) {
-            options->tileWidth = atoi(argv[++i]);
-            options->tileWidth = CLAMP(options->tileWidth, (unsigned int)TILE_WIDTH_MIN, (unsigned int)TILE_WIDTH_MAX);
+            options.tileWidth = atoi(argv[++i]);
+            options.tileWidth = CLAMP(options.tileWidth, (unsigned int)TILE_WIDTH_MIN, (unsigned int)TILE_WIDTH_MAX);
         }
         else if (!strcmp(argv[i], "-tile_h")) {
-            options->tileHeight = atoi(argv[++i]);
-            options->tileHeight = CLAMP(options->tileHeight, (unsigned int)TILE_HEIGHT_MIN, (unsigned int)TILE_HEIGHT_MAX);
+            options.tileHeight = atoi(argv[++i]);
+            options.tileHeight = CLAMP(options.tileHeight, (unsigned int)TILE_HEIGHT_MIN, (unsigned int)TILE_HEIGHT_MAX);
         }
 
         else if (!strcmp(argv[i], "-num_pals")) {
-            options->numPalettes = atoi(argv[++i]);
-            options->numPalettes = CLAMP(options->numPalettes, (unsigned int)NUM_PALETTES_MIN, (unsigned int)NUM_PALETTES_MAX);
+            options.numPalettes = atoi(argv[++i]);
+            options.numPalettes = CLAMP(options.numPalettes, (unsigned int)NUM_PALETTES_MIN, (unsigned int)NUM_PALETTES_MAX);
         }
         else if (!strcmp(argv[i], "-cols_per_pal")) {
-            options->colorsPerPalette = atoi(argv[++i]);
-            options->colorsPerPalette = CLAMP(options->colorsPerPalette, (unsigned int)COLORS_PER_PALETTE_MIN, (unsigned int)COLORS_PER_PALETTE_MAX);
+            options.colorsPerPalette = atoi(argv[++i]);
+            options.colorsPerPalette = CLAMP(options.colorsPerPalette, (unsigned int)COLORS_PER_PALETTE_MIN, (unsigned int)COLORS_PER_PALETTE_MAX);
         }
         else if (!strcmp(argv[i], "-bits_per_chan")) {
-            options->bitsPerChannel = atoi(argv[++i]);
-            options->bitsPerChannel = CLAMP(options->bitsPerChannel, (unsigned int)BITS_PER_CHANNEL_MIN, (unsigned int)BITS_PER_CHANNEL_MAX);
+            options.bitsPerChannel = atoi(argv[++i]);
+            options.bitsPerChannel = CLAMP(options.bitsPerChannel, (unsigned int)BITS_PER_CHANNEL_MIN, (unsigned int)BITS_PER_CHANNEL_MAX);
         }
         else if (!strcmp(argv[i], "-fract_of_px")) {
-            options->fractionOfPixels = atof(argv[++i]);
-            options->fractionOfPixels = CLAMP(options->fractionOfPixels, (float)FRACTION_OF_PIXELS_MIN, (float)FRACTION_OF_PIXELS_MAX);
+            options.fractionOfPixels = atof(argv[++i]);
+            options.fractionOfPixels = CLAMP(options.fractionOfPixels, (float)FRACTION_OF_PIXELS_MIN, (float)FRACTION_OF_PIXELS_MAX);
         }
 
         else if (!strcmp(argv[i], "-col_zero")) {
             std::string mode_str = argv[++i];
-            if      (mode_str == "unique") options->colorZeroBehaviour       = Opts::indexZeroUnique;
-            else if (mode_str == "shared") options->colorZeroBehaviour       = Opts::indexZeroShared;
-            else if (mode_str == "transp") options->colorZeroBehaviour       = Opts::indexZeroTranspFromTransp;
-            else if (mode_str == "transp_color") options->colorZeroBehaviour = Opts::indexZeroTranspFromColor;
+            if      (mode_str == "unique") options.colorZeroBehaviour       = Opts::indexZeroUnique;
+            else if (mode_str == "shared") options.colorZeroBehaviour       = Opts::indexZeroShared;
+            else if (mode_str == "transp") options.colorZeroBehaviour       = Opts::indexZeroTranspFromTransp;
+            else if (mode_str == "transp_color") options.colorZeroBehaviour = Opts::indexZeroTranspFromColor;
             else {
                 printf("-col_zero must be one of: unique, shared, transp, trans_color\n");
                 return EXIT_FAILURE;
@@ -221,9 +223,9 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
 
         else if(!strcmp(argv[i], "-dither")) {
             std::string mode_str = argv[++i];
-            if      (mode_str == "off")  options->ditherMethod = Opts::ditherOff;
-            else if (mode_str == "fast") options->ditherMethod = Opts::ditherFast;
-            else if (mode_str == "slow") options->ditherMethod = Opts::ditherSlow;
+            if      (mode_str == "off")  options.ditherMethod = Opts::ditherOff;
+            else if (mode_str == "fast") options.ditherMethod = Opts::ditherFast;
+            else if (mode_str == "slow") options.ditherMethod = Opts::ditherSlow;
             else {
                 printf("-dither must be one of: off, fast, slow\n");
                 return EXIT_FAILURE;
@@ -232,12 +234,12 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
 
         else if(!strcmp(argv[i], "-dither_pat")) {
             std::string mode_str = argv[++i];
-            if      (mode_str == "diag4")  options->ditherPatternType = Opts::ditherDiagonal4;
-            else if (mode_str == "horiz4") options->ditherPatternType = Opts::ditherHorizontal4;
-            else if (mode_str == "vert4")  options->ditherPatternType = Opts::ditherVertical4;
-            else if (mode_str == "diag2")  options->ditherPatternType = Opts::ditherDiagonal2;
-            else if (mode_str == "horiz2") options->ditherPatternType = Opts::ditherHorizontal2;
-            else if (mode_str == "vert2")  options->ditherPatternType = Opts::ditherVertical2;
+            if      (mode_str == "diag4")  options.ditherPatternType = Opts::ditherDiagonal4;
+            else if (mode_str == "horiz4") options.ditherPatternType = Opts::ditherHorizontal4;
+            else if (mode_str == "vert4")  options.ditherPatternType = Opts::ditherVertical4;
+            else if (mode_str == "diag2")  options.ditherPatternType = Opts::ditherDiagonal2;
+            else if (mode_str == "horiz2") options.ditherPatternType = Opts::ditherHorizontal2;
+            else if (mode_str == "vert2")  options.ditherPatternType = Opts::ditherVertical2;
             else {
                 printf("-dither_pat must be one of: diag4, horiz4, vert4, diag2, horiz2, vert2\n");
                 return EXIT_FAILURE;
@@ -245,21 +247,25 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
         }
 
         else if (!strcmp(argv[i], "-dither_wt")) {
-            options->ditherWeight = atof(argv[++i]);
-            options->ditherWeight = CLAMP(options->ditherWeight, (float)DITHER_WEIGHT_MIN, (float)DITHER_WEIGHT_MAX);
+            options.ditherWeight = atof(argv[++i]);
+            options.ditherWeight = CLAMP(options.ditherWeight, (float)DITHER_WEIGHT_MIN, (float)DITHER_WEIGHT_MAX);
         }
 
         else if(!strcmp(argv[i], "-use_metafile")) {
-            options->use_metafile = true;
+            options.use_metafile = true;
         }
 
         else if(!strcmp(argv[i], "-rand_seed")) {
-            options->randomSeed = atof(argv[++i]);
+            options.randomSeed = atof(argv[++i]);
         }
 
         else if(!strcmp(argv[i], "-rand_on")) {
             srand (time(NULL));
-            options->randomSeed = (unsigned int)rand() % 0xffff;
+            options.randomSeed = (unsigned int)rand() % 0xffff;
+        }
+
+        else if(!strcmp(argv[i], "-export_previews")) {
+            options.exportPreviews = true;
         }
 
         else {
@@ -272,9 +278,9 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
 
 
 // Read in and process a set of args from a file named <inputfile>.meta
-static int handleMetaFileArgs(quantOptions * options) {
+static int handleMetaFileArgs(quantOptions & options) {
 
-    string fname = options->sourceImageFilename + ".meta";
+    string fname = options.sourceImageFilename + ".meta";
     ifstream metaFile(fname);
     if ( metaFile )
     {
@@ -315,7 +321,7 @@ static int handleMetaFileArgs(quantOptions * options) {
 }
 
 
-int processArgs(int argc, char* argv[], quantOptions * options) {
+int processArgs(int argc, char* argv[], quantOptions & options) {
 
     // Init RNG for generating optional random seed option (vs deterministic seed)
     std::srand( std::time({}) );
@@ -335,42 +341,42 @@ int processArgs(int argc, char* argv[], quantOptions * options) {
     }
 
     //default params
-    options->sourceImageFilename = argv[ARG_AT_INPUT_FILENAME];
-    options->outputImageFilename = argv[ARG_AT_INPUT_FILENAME];
-    options->outputImageFilename = options->outputImageFilename.substr(0, options->outputImageFilename.size() - 4) + "_out.png";
+    options.sourceImageFilename = argv[ARG_AT_INPUT_FILENAME];
+    options.outputImageFilename = argv[ARG_AT_INPUT_FILENAME];
+    options.outputImageFilename = options.outputImageFilename.substr(0, options.outputImageFilename.size() - 4) + "_out.png";
 
     logArgs(ARG_AT_INPUT_FILENAME, argc, (const char **)argv, options);
     if (processArgs(ARG_AFTER_INPUT_FILENAME, argc, (const char **)argv, options) == EXIT_FAILURE)
         return EXIT_FAILURE;
 
-    if (options->use_metafile) {
+    if (options.use_metafile) {
         if (handleMetaFileArgs(options) == EXIT_FAILURE)
         return EXIT_FAILURE;
     }
 
 
     // Finalize some values based on options
-    options->totalPaletteColors    = options->numPalettes * options->colorsPerPalette;
-    options->outputLogArgsFilename = options->outputImageFilename + ".convert_args.txt";
-    switch (options->colorZeroBehaviour) {
-          case Opts::indexZeroUnique:           options->colorZeroValue = COLOR_ZERO_RGB_DEFAULT;          break;
-          case Opts::indexZeroShared:           options->colorZeroValue = options->sharedColorInput;       break;
+    options.totalPaletteColors    = options.numPalettes * options.colorsPerPalette;
+    options.outputLogArgsFilename = options.outputImageFilename + ".convert_args.txt";
+    switch (options.colorZeroBehaviour) {
+          case Opts::indexZeroUnique:           options.colorZeroValue = COLOR_ZERO_RGB_DEFAULT;          break;
+          case Opts::indexZeroShared:           options.colorZeroValue = options.sharedColorInput;       break;
           // Below not a typo, behavior from original source, uses transpFromColor for transpFromTransp
-          case Opts::indexZeroTranspFromTransp: options->colorZeroValue = options->transparentColorInput;  break;
-          case Opts::indexZeroTranspFromColor:  options->colorZeroValue = options->transparentColorInput;  break;
+          case Opts::indexZeroTranspFromTransp: options.colorZeroValue = options.transparentColorInput;  break;
+          case Opts::indexZeroTranspFromColor:  options.colorZeroValue = options.transparentColorInput;  break;
     }
 
     // TODO: ditherPattern is used like so:
     /// const index = ditherPattern[pixel.x & 1][pixel.y & 1];
-    memcpy(options->ditherPattern, ditherPatterns[options->ditherPatternType], DITHER_PATTERN_AR_SZ);
-    options->ditherPixels = ditherPixelsSz[options->ditherPatternType];
+    memcpy(options.ditherPattern, ditherPatterns[options.ditherPatternType], DITHER_PATTERN_AR_SZ);
+    options.ditherPixels = ditherPixelsSz[options.ditherPatternType];
 
     // Apply rand seed, will be either deterministic or random depending on options
-    std::srand( options->randomSeed );
+    std::srand( options.randomSeed );
 
     checkLogRandArgs(options);
-    if (options->verbose) {
-        printf("Arguments: %s\n", options->argsForLoggingToOutput.c_str());
+    if (options.verbose) {
+        printf("Arguments: %s\n", options.argsForLoggingToOutput.c_str());
     }
 
     // TODO:

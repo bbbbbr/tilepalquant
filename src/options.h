@@ -101,6 +101,7 @@ struct quantOptions {
     bool         use_metafile;
     bool         verbose;
     bool         verboseDebug;
+    bool         exportPreviews;
 };
 
 
@@ -136,5 +137,5 @@ struct quantOptions {
 #define DITHER_PATTERN_DEFAULT        Opts::ditherDiagonal4
 #define DITHER_WEIGHT_DEFAULT         0.50
 
-int processArgs(int argc, char* argv[], quantOptions * options);
+int processArgs(int argc, char* argv[], quantOptions & options);
 

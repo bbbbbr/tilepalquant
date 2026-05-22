@@ -113,9 +113,13 @@ static void updateProgress(float progress) {
 
 }
 
+// Exports a PNG image with the (current) processed output.
+//
+// When -export_previews is enabled this will be called at
+// various stages (per reference implementation) to export
+// PNG previews of the partially processed image.
 static void updateQuantizedImage(Image & image) {
-//    postMessage({ action: Action.UpdateQuantizedImage, imageData: image });
-    // TODO: TEMP: DEBUG: export a PNG as progress - consider turning off or making optional
+    // postMessage({ action: Action.UpdateQuantizedImage, imageData: image });
     saveImageRGBAToPNG(options, image);
 }
 
@@ -269,7 +273,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     if (showProgress) {
         Image resultImage = quantizeTiles(palettes, reducedImageData, false);
         if (options.verboseDebug) printPaletteU8(resultImage.paletteData);
-        updateQuantizedImage(resultImage);
+        if (options.exportPreviews) updateQuantizedImage(resultImage);
     }
 
     for (int numColors = startIndex; numColors <= endIndex; numColors++) {
@@ -279,7 +283,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
         updatePalettes(palettes, false);
         if (showProgress) {
             Image resultImage = quantizeTiles(palettes, reducedImageData, false);
-            updateQuantizedImage(resultImage);
+            if (options.exportPreviews) updateQuantizedImage(resultImage);
         }
     }
     if (options.verboseDebug) printPalettes(palettes);
@@ -303,11 +307,11 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
         if (showProgress) {
             if (useMin && (i == (replaceIterations - 1))) {
                 Image resultImage = quantizeTiles(minPalettes, reducedImageData, false);
-                updateQuantizedImage(resultImage);
+                if (options.exportPreviews) updateQuantizedImage(resultImage);
             }
             else {
                 Image resultImage = quantizeTiles(palettes, reducedImageData, false);
-                updateQuantizedImage(resultImage);
+                if (options.exportPreviews) updateQuantizedImage(resultImage);
             }
         }
         if (options.verboseDebug) printf("Mean Square Error: %0.0f\n", mse);

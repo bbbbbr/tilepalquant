@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
     quantOptions options;
 
     // Make sure we had no errors
-    if ((errorCode = processArgs(argc, argv, &options)) == EXIT_SUCCESS) {
+    if ((errorCode = processArgs(argc, argv, options)) == EXIT_SUCCESS) {
 
         Image sourceImageRGBA;
         if ((errorCode = loadImageRGBAFromPNG(options, sourceImageRGBA)) != EXIT_SUCCESS) {
