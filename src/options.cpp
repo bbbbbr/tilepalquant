@@ -87,9 +87,9 @@ static void initArgs(quantOptions * options) {
 
 static void showHelp(void) {
     printf(
-        "tilepalquant: console port of rilden's js tiledpalettequant\n"
-        "              see https://github.com/rilden/tiledpalettequant\n"
-        "\n"
+        "tilepalquant: Console port of rilden's js tiledpalettequant (by bbbbbr)\n"
+        "              Original at: https://github.com/rilden/tiledpalettequant\n"
+                "\n"
         "usage: tilepalquant <file>.png [options]\n"
         "-o <filename>         Ouput file (if not used then default is <png file>_out.png)\n"
         "-h                    Show this help output\n"
