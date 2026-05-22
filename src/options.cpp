@@ -101,7 +101,7 @@ static void showHelp(void) {
         "-num_pals <num>       Number of palettes           (default: 8, range: 1-16)\n"
         "-cols_per_pal <num>   Number of colors per palette (default: 4, range: 2-256)\n"
         "-bits_per_chan <num>  Bits per RGB color channel   (default: 5, range: 2-8)\n"
-        "-fract_of_px <num>                                 (default: 0.1, range: 0.01- 10)\n"
+        "-frac_of_px <num>                                  (default: 0.1, range: 0.01- 10)\n"
         "-col_zero <mode>      Color index zero behavior (default: unique)\n"
         "                        unique:\n"
         "                        shared: (may specify -shared_col)\n"
@@ -199,7 +199,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
             options.bitsPerChannel = atoi(argv[++i]);
             options.bitsPerChannel = CLAMP(options.bitsPerChannel, (unsigned int)BITS_PER_CHANNEL_MIN, (unsigned int)BITS_PER_CHANNEL_MAX);
         }
-        else if (!strcmp(argv[i], "-fract_of_px")) {
+        else if (!strcmp(argv[i], "-frac_of_px")) {
             options.fractionOfPixels = atof(argv[++i]);
             options.fractionOfPixels = CLAMP(options.fractionOfPixels, (float)FRACTION_OF_PIXELS_MIN, (float)FRACTION_OF_PIXELS_MAX);
         }
@@ -329,7 +329,7 @@ int processArgs(int argc, char* argv[], quantOptions & options) {
 
     if (argc < 2) {
         showHelp();
-        return EXIT_SUCCESS;
+        return EXIT_SUCCESS;  // TODO: Block png loading if returning from here
     }
 
     if (!strcmp(argv[ARG_AT_INPUT_FILENAME], "-h")) {
