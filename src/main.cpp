@@ -10,10 +10,6 @@
 #include "image_png.h"
 #include "quant.h"
 
-// TODO
-// PNGImage sourceImage;
-// PNGImage quantizedImage;
-
 int main(int argc, char* argv[]) {
 
     int errorCode = EXIT_SUCCESS;
