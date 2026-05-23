@@ -146,7 +146,6 @@ static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bo
     if (doSorting) {
         pal = sortPalettes(pal, startIndex);
     }
-    // @ CURRENT LOC HERE
 /*
     // TODO: Postmessage update handling... (is it needed?), Don't really need a preview of the palette image since it's embedded in the indexed PNG (at least for <= 256 colors)
     postMessage({
@@ -566,37 +565,46 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
                 const int index2 = MAX(startIndex, (int)floor(randRange0to1() * numColors));
                 if (index1 == index2)
                     continue;
+                // NOTE: Workaround for buffer overrun.
+                // In reference JS version and here "index1" and "index2" may be zero which
+                // leads to invalid array access for "left1" and "left2" where -1 makes the
+                // accessed index -1. In JS this results in a value of "undefined for
+                // "left1" or "left2", which is probably what their ">=0" tests below are for.
+                #define INVALID_IGNORE -1
                 const int up1 = pIndex[i - 1][index1];
                 const int i1 = pIndex[i][index1];
-                const int left1 = pIndex[i][index1 - 1];
+                const int left1 = (index1 > 0) ? pIndex[i][index1 - 1] : INVALID_IGNORE;
                 const int right1 = pIndex[i][index1 + 1];
                 const int up2 = pIndex[i - 1][index2];
                 const int i2 = pIndex[i][index2];
-                const int left2 = pIndex[i][index2 - 1];
+                const int left2 = (index2 > 0) ? pIndex[i][index2 - 1] : INVALID_IGNORE;
                 const int right2 = pIndex[i][index2 + 1];
+
                 double straightDist = upWeight *
                     colorDistance(palettes[p2][i1], palettes[p1][up1]);
-                if (left1 >= 0)
+                if (left1 >= INVALID_IGNORE) //  >= 0)
                     straightDist += colorDistance(palettes[p2][i1], palettes[p2][left1]);
                 if (right1 < numColors)
                     straightDist += colorDistance(palettes[p2][i1], palettes[p2][right1]);
                 straightDist +=
                     upWeight *
                         colorDistance(palettes[p2][i2], palettes[p1][up2]);
-                if (left2 >= 0)
+                if (left2 >= INVALID_IGNORE) //  >= 0)
                     straightDist += colorDistance(palettes[p2][i2], palettes[p2][left2]);
                 if (right2 < numColors)
                     straightDist += colorDistance(palettes[p2][i2], palettes[p2][right2]);
+
+                if (options.verboseDebug) printf("sortPalettes() loop 8a-3\n");
                 double swappedDist = upWeight *
                     colorDistance(palettes[p2][i2], palettes[p1][up1]);
-                if (left1 >= 0)
+                if (left1 >= INVALID_IGNORE) //  >= 0)
                     swappedDist += colorDistance(palettes[p2][i2], palettes[p2][left1]);
                 if (right1 < numColors)
                     swappedDist += colorDistance(palettes[p2][i2], palettes[p2][right1]);
                 swappedDist +=
                     upWeight *
                         colorDistance(palettes[p2][i1], palettes[p1][up2]);
-                if (left2 >= 0)
+                if (left2 >= INVALID_IGNORE) //  >= 0)
                     swappedDist += colorDistance(palettes[p2][i1], palettes[p2][left2]);
                 if (right2 < numColors)
                     swappedDist += colorDistance(palettes[p2][i1], palettes[p2][right2]);
