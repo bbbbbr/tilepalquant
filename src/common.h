@@ -1,6 +1,9 @@
 #pragma once
 using namespace std;
 
+#define VERSION "0.9.5"
+
+
 template <typename T> T MIN(const T& value1, const T& value2)
 {
   return value1 < value2 ? value1 : value2;

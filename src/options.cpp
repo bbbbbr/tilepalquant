@@ -13,8 +13,6 @@
 
 using namespace std;
 
-#define VERSION "0.9.5"
-
 
 // Order should match: Opts::ditherPatternValues
 const uint8_t ditherPatterns[Opts::ditherPatternsCount][DITHER_WIDTH][DITHER_HEIGHT] = {
