@@ -102,15 +102,16 @@ static void printPaletteU8(const vector <rgbColorU8> & palette);
 */
 // function updateProgress(progress) {
 static void updateProgress(float progress) {
-    // postMessage({ action: Action.UpdateProgress, progress: progress });
-    const int prog_bar_size = 20;
-    const int prog_reached = (int)((float)(prog_bar_size / 100.0) * progress);
-    if (options.verbose) printf("* Progress: %%%0.0f |", progress);
-    int i = 1;
-    while (i++ < prog_reached)  printf("#");
-    while (i++ < prog_bar_size) printf("-");
-    printf("|\n");
-
+    if (options.verbose) {
+        // postMessage({ action: Action.UpdateProgress, progress: progress });
+        const int prog_bar_size = 20;
+        const int prog_reached = (int)((float)(prog_bar_size / 100.0) * progress);
+        if (options.verbose) printf("* Progress: %%%0.0f |", progress);
+        int i = 1;
+        while (i++ < prog_reached)  printf("#");
+        while (i++ < prog_bar_size) printf("-");
+        printf("|\n");
+    }
 }
 
 // Exports a PNG image with the (current) processed output.
@@ -213,7 +214,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     vector <Tile> tiles;
     extractTiles(reducedImageData, tiles);
 
-    if (options.verboseDebug) {
+    if (options.verbose) {
         float avgPixelsPerTile = 0;
         for (const Tile & tile : tiles) {
             avgPixelsPerTile += tile.colors.size();
@@ -1232,8 +1233,8 @@ static void extractTiles(Image & image, vector <Tile> & tiles) {
 
 
 
-    if (options.verboseDebug) {
-        printf("****** Num Tiles = %zu ******* \n", tiles.size());
+    if (options.verbose) {
+        printf("Num Tiles: %zu\n", tiles.size());
         const float avgPixelsPerTile = totalPixels / tileCount;
         printf("avg pixels per tile: %0.2f\n", avgPixelsPerTile);
     }
