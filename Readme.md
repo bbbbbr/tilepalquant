@@ -3,6 +3,27 @@ A c++ console port of rilden's excellent tile based palette quantizer for images
 For the original javascript/web version see:
 https://github.com/rilden/tiledpalettequant
 
+----
+
+One change from the original is defaulting to deterministic
+output instead of slightly different (randomly driven) output
+each time. This helps for integrating into build tool-chains
+so that images get converted in exactly the same way, which
+means builds are consistent and reproducible.
+
+The behavior can be changed to non-deterministic by using the
+`-rand_on` option to randomly seed the RNG. This allows for
+experimenting with different processing runs to see if a more
+optimal output image can be found.
+
+To reproduce the output from a given `-rand_on` run make
+sure to have verbose enabled (`-v`). Then the generated RNG
+seed will be visible in the console output as a
+pre-formulated `-rand_seed <nnn>` argument which can be used
+in place of `-rand_on`.
+
+----
+
 ```
 usage: tilepalquant <file>.png [options]
 -o <filename>         Ouput file (if not used then default is <png file>_out.png)
