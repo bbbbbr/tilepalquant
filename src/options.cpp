@@ -179,29 +179,35 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
             options.outputImageFilename = argv[++i];
         }
         else if (!strcmp(argv[i], "-tile_w")) {
-            options.tileWidth = atoi(argv[++i]);
+            unsigned int preClamp = options.tileWidth = atoi(argv[++i]);
             options.tileWidth = CLAMP(options.tileWidth, (unsigned int)TILE_WIDTH_MIN, (unsigned int)TILE_WIDTH_MAX);
+            if (options.tileWidth != preClamp) printf("-tile_w value out of range, clamped to: %d\n", options.tileWidth);
         }
         else if (!strcmp(argv[i], "-tile_h")) {
-            options.tileHeight = atoi(argv[++i]);
+            unsigned int preClamp = options.tileHeight = atoi(argv[++i]);
             options.tileHeight = CLAMP(options.tileHeight, (unsigned int)TILE_HEIGHT_MIN, (unsigned int)TILE_HEIGHT_MAX);
+            if (options.tileHeight != preClamp) printf("-tile_h value out of range, clamped to: %d\n", options.tileHeight);
         }
 
         else if (!strcmp(argv[i], "-num_pals")) {
-            options.numPalettes = atoi(argv[++i]);
+            unsigned int preClamp = options.numPalettes = atoi(argv[++i]);
             options.numPalettes = CLAMP(options.numPalettes, (unsigned int)NUM_PALETTES_MIN, (unsigned int)NUM_PALETTES_MAX);
+            if (options.numPalettes != preClamp) printf("-num_pals value out of range, clamped to: %d\n", options.numPalettes);
         }
         else if (!strcmp(argv[i], "-cols_per_pal")) {
-            options.colorsPerPalette = atoi(argv[++i]);
+            unsigned int preClamp = options.colorsPerPalette = atoi(argv[++i]);
             options.colorsPerPalette = CLAMP(options.colorsPerPalette, (unsigned int)COLORS_PER_PALETTE_MIN, (unsigned int)COLORS_PER_PALETTE_MAX);
+            if (options.colorsPerPalette != preClamp) printf("-cols_per_pal value out of range, clamped to: %d\n", options.colorsPerPalette);
         }
         else if (!strcmp(argv[i], "-bits_per_chan")) {
-            options.bitsPerChannel = atoi(argv[++i]);
+            unsigned int preClamp = options.bitsPerChannel = atoi(argv[++i]);
             options.bitsPerChannel = CLAMP(options.bitsPerChannel, (unsigned int)BITS_PER_CHANNEL_MIN, (unsigned int)BITS_PER_CHANNEL_MAX);
+            if (options.bitsPerChannel != preClamp) printf("-bits_per_chan value out of range, clamped to: %d\n", options.bitsPerChannel);
         }
         else if (!strcmp(argv[i], "-frac_of_px")) {
-            options.fractionOfPixels = atof(argv[++i]);
+            float preClamp = options.fractionOfPixels = atof(argv[++i]);
             options.fractionOfPixels = CLAMP(options.fractionOfPixels, (float)FRACTION_OF_PIXELS_MIN, (float)FRACTION_OF_PIXELS_MAX);
+            if (options.fractionOfPixels != preClamp) printf("-frac_of_px value out of range, clamped to: %0.2f\n", options.fractionOfPixels);
         }
 
         else if (!strcmp(argv[i], "-col_zero")) {
