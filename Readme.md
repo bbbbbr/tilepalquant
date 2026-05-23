@@ -19,6 +19,10 @@ usage: tilepalquant <file>.png [options]
                         shared: (may specify -shared_col)
                         transp: transparent, from transparent pixels
                         transp_color: (may specify -transp_col)
+-shared_col <col>    RGB Color used by "-col_zero shared" (default: 0,0,0)
+                        Entered as: r,g,b. Example: "255,128,0"
+-transp_col <col>    RGB Color used by "-col_zero transp_color" (default: 255,0,255)
+                        Entered as: r,g,b. Example: "255,128,0"
 -dither <mode>       Dithering (off, fast, slow) (default: off)
 -dither_pat <pat>    Dither pattern (default: diag4)
                         (diag4, horiz4, vert4, diag2, horiz2, vert2)
@@ -30,5 +34,6 @@ usage: tilepalquant <file>.png [options]
                          Use -v to view generated seed (for later re-use).
 -export_previews     Export multiple png previews during processing
 
-Example usage: tilepalquant in.png -cols_per_pal 16 -num_pals 2 -dither fast -dither_pat diag2 -o out.png
+Example usage: tilepalquant in.png -cols_per_pal 16 -num_pals 2 -o out.png
+
 ```

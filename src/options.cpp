@@ -34,6 +34,7 @@ const uint8_t ditherPixelsSz[Opts::ditherPatternsCount] = {
  };
 
 
+static bool parseRGBStrToRGBCol(rgbColor & color, const char * str);
 static string str_remove_path(string str_in);
 static void   initArgs(quantOptions & options);
 static void   showHelp(void);
@@ -42,6 +43,26 @@ static void   logArgs(int startIndex, int argc, const char* argv[], quantOptions
 static int    processArgs(int startIndex, int argc, const char* argv[], quantOptions & options);
 static int    handleMetaFileArgs(quantOptions & options);
 
+
+static bool parseRGBStrToRGBCol(rgbColor & color, const char * str) {
+    std::string color_str = str;
+    std::stringstream ss(color_str);
+    std::vector<double> rgbvals;
+
+    for (int i; ss >> i;) {
+        rgbvals.push_back(i);
+        if (ss.peek() == ',')
+            ss.ignore();
+    }
+
+    if (rgbvals.size() == 3) {
+        color.ch.r = rgbvals[RGB_R];
+        color.ch.g = rgbvals[RGB_G];
+        color.ch.b = rgbvals[RGB_B];
+        return true;
+    }
+    else return false;
+}
 
 // Strip any leading path and slashes
 static string str_remove_path(string str_in) {
@@ -108,6 +129,10 @@ static void showHelp(void) {
         "                        shared: (may specify -shared_col)\n"
         "                        transp: transparent, from transparent pixels\n"
         "                        transp_color: (may specify -transp_col)\n"
+        "-shared_col <col>    RGB Color used by \"-col_zero shared\" (default: 0,0,0)\n"
+        "                        Entered as: r,g,b. Example: \"255,128,0\"\n"
+        "-transp_col <col>    RGB Color used by \"-col_zero transp_color\" (default: 255,0,255)\n"
+        "                        Entered as: r,g,b. Example: \"255,128,0\"\n"
         "-dither <mode>       Dithering (off, fast, slow) (default: off)\n"
         "-dither_pat <pat>    Dither pattern (default: diag4)\n"
         "                        (diag4, horiz4, vert4, diag2, horiz2, vert2)\n"
@@ -122,11 +147,6 @@ static void showHelp(void) {
         "Example usage: tilepalquant in.png -cols_per_pal 16 -num_pals 2 -o out.png\n"
         "\n"
     );
-
-        // TODO: options to specify shared color/transparent color as RGBHEX
-        // rgbColor sharedColor;  // specify -shared_col
-        // rgbColor transparentColor;  -transp_col
-
 }
 
 
@@ -221,15 +241,24 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
             else if (mode_str == "transp") options.colorZeroBehaviour       = Opts::indexZeroTranspFromTransp;
             else if (mode_str == "transp_color") options.colorZeroBehaviour = Opts::indexZeroTranspFromColor;
             else {
-                printf("-col_zero must be one of: unique, shared, transp, trans_color\n");
+                printf("Error: -col_zero must be one of: unique, shared, transp, trans_color\n");
                 return EXIT_FAILURE;
             }
         }
 
-        // TODO:
-        // rgbColor colorZeroValue; // TODO: = hexToColor(colorInput.value);
-        // rgbColor sharedColor;
-        // rgbColor transparentColor;
+        else if (!strcmp(argv[i], "-shared_col")) {
+            if (parseRGBStrToRGBCol(options.sharedColorInput, argv[++i]) == false) {
+                printf("Error: -shared_col format invalid, must be \"r,g,b\". Example: \" -shared_col 255,128,0 \"\n");
+                return EXIT_FAILURE;
+            }
+        }
+
+        else if (!strcmp(argv[i], "-transp_col")) {
+            if (parseRGBStrToRGBCol(options.transparentColorInput, argv[++i]) == false) {
+                printf("Error: -transp_col format invalid, must be \"r,g,b\". Example: \" -transp_col 255,128,0 \"\n");
+                return EXIT_FAILURE;
+            }
+        }
 
         else if(!strcmp(argv[i], "-dither")) {
             std::string mode_str = argv[++i];
@@ -237,7 +266,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
             else if (mode_str == "fast") options.ditherMethod = Opts::ditherFast;
             else if (mode_str == "slow") options.ditherMethod = Opts::ditherSlow;
             else {
-                printf("-dither must be one of: off, fast, slow\n");
+                printf("Error: -dither must be one of: off, fast, slow\n");
                 return EXIT_FAILURE;
             }
         }
@@ -251,7 +280,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
             else if (mode_str == "horiz2") options.ditherPatternType = Opts::ditherHorizontal2;
             else if (mode_str == "vert2")  options.ditherPatternType = Opts::ditherVertical2;
             else {
-                printf("-dither_pat must be one of: diag4, horiz4, vert4, diag2, horiz2, vert2\n");
+                printf("Error: -dither_pat must be one of: diag4, horiz4, vert4, diag2, horiz2, vert2\n");
                 return EXIT_FAILURE;
             }
         }
@@ -369,7 +398,7 @@ int processArgs(int argc, char* argv[], quantOptions & options) {
     options.totalPaletteColors    = options.numPalettes * options.colorsPerPalette;
     options.outputLogArgsFilename = options.outputImageFilename + ".convert_args.txt";
     switch (options.colorZeroBehaviour) {
-          case Opts::indexZeroUnique:           options.colorZeroValue = COLOR_ZERO_RGB_DEFAULT;          break;
+          case Opts::indexZeroUnique:           options.colorZeroValue = COLOR_ZERO_RGB_DEFAULT;         break;
           case Opts::indexZeroShared:           options.colorZeroValue = options.sharedColorInput;       break;
           // Below not a typo, behavior from original source, uses transpFromColor for transpFromTransp
           case Opts::indexZeroTranspFromTransp: options.colorZeroValue = options.transparentColorInput;  break;
