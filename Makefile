@@ -17,12 +17,9 @@ BIN = $(BINDIR)/$(BIN_NAME)$(EXE_EXT)
 PACKFILES = $(BIN) Changelog.md README.md LICENSE
 PACKBASENAME = $(BIN_NAME)
 
-# CC = $(TOOLSPREFIX)g++
-# CFLAGS = -Os -Wall -g # -Wextra -pedantic
-# LFLAGS = -g -s -static -lm
 
 INCS = -I"$(SRCDIR)"
-CFLAGS = $(INCS) -Wall -Wextra -pedantic
+CFLAGS = $(INCS) -Wall -Wextra -pedantic -std=c++11
 CFLAGS += -MMD -MP
 
 
