@@ -47,7 +47,7 @@ macos: linux
 # Linux build
 linux: CC = $(TOOLSPREFIX)g++
 linux: CFLAGS += -Os -Wall -g # -Wextra -pedantic
-linux: LFLAGS += -g -s -static -lm
+linux: LDFLAGS += -g -s -lm # -static
 linux: $(COBJ)
 	$(CC) $(CFLAGS) -o $(BIN) $^ $(LDFLAGS)
 
