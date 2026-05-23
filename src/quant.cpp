@@ -17,7 +17,7 @@ static void updateProgress(float progress);
 static void updateQuantizedImage(Image & image);
 static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bool doSorting);
 
-static void movePalettesCloser(vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, pixelEntry & pixel, float alpha);
+static void movePalettesCloser(vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, const pixelEntry & pixel, float alpha);
 
 static vector <vector <rgbColor>> reducePalettes(const vector <vector <rgbColor>> & palettes, unsigned int bitsPerChannel);
 static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> palettes, const int startIndex);
@@ -708,7 +708,7 @@ static double brightness(const rgbColor & color) {
 
 // function replaceWeakestColors(palettes, tiles, minColorFactor, minPaletteFactor, replacePalettes) {
 static vector <vector <rgbColor>> replaceWeakestColors(const vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, float minColorFactor, float minPaletteFactor, bool replacePalettes) {
-    const unsigned int colorZeroBehaviour = options.colorZeroBehaviour;
+    // const unsigned int colorZeroBehaviour = options.colorZeroBehaviour;
     const bool         useSlowDither      = options.ditherMethod == Opts::ditherSlow;
 
     // let closestPal = closestPaletteDistance;  // Function alias, going to use a simplistic implementation
@@ -1413,7 +1413,7 @@ static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Im
 // Makes a uint8 copy of the palette for use with exporting a preview image
 // function addBmpColors(palettes, bmpPalette) {
 static void addPngColors(vector <vector <rgbColor>> & palettes, vector <rgbColorU8> & pngPalette, int adjustedIndex) {
-    int i = 0;
+    // int i = 0;
     for (const vector <rgbColor> & pal : palettes) {
         if (adjustedIndex == 1) {
             pngPalette.push_back(rgbColorToU8(options.colorZeroValue));
