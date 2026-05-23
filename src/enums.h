@@ -1,6 +1,6 @@
 /*
  // TODO: these should all now be handled in options.h
- 
+
 // make sure these enums are syncronized with the ones in worker.ts
 export var Action;
 (function (Action) {
