@@ -1,0 +1,93 @@
+name: Build and Package
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  # Triggers the workflow on push or pull request events but only for the develop branch
+  # push:
+  #   branches: [ develop ]
+  # pull_request:
+  #   branches: [ develop ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            name: Linux-Wincross-x64
+          - os: ubuntu-22.04-arm
+            name: Linux-arm64
+          - os: macos-13
+            name: MacOS-x64
+          - os: macos-14
+            name: MacOS-arm64
+    steps:
+
+
+
+      # ==== OS Specific Dependencies ====
+      - name: Linux Depends
+        if: matrix.name == 'Linux-Wincross-x64'
+        # For Windows crossbuild
+        # Use "x64" for 64 bit (x86_64-w64-mingw32-gcc), "x86" for 32 bit (i686-w64-mingw32-gcc)
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+
+      # ==== Build Steps ====
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          path: tilepalquant-root
+          submodules: false
+
+      # ==== Builds ====
+      - name: Build MacOS x64
+        if: (matrix.name == 'MacOS-x64')
+        shell: bash
+        run: |
+          cd tilepalquant-root
+          make macos-x64-zip
+          cd ..
+
+      - name: Build MacOS arm64
+        if: (matrix.name == 'MacOS-arm64')
+        shell: bash
+        run: |
+          cd tilepalquant-root
+          make macos-arm64-zip
+          cd ..
+
+      - name: Build Linux arm64
+        if: (matrix.name == 'Linux-arm64')
+        shell: bash
+        run: |
+          cd tilepalquant-root
+          make linux-arm-zip
+          cd ..
+
+      - name: Build Linux
+        if: (matrix.name == 'Linux-Wincross-x64')
+        shell: bash
+        run: |
+          cd tilepalquant-root
+          make package
+          cd ..
+
+      # ==== Packaging ====
+      - name: Package build Linux/MacOS
+        shell: bash
+        run: |
+          cd tilepalquant-root
+          ls -la package
+          # 7z a package.zip package/*
+          cd ..
+
+      - name: Store build
+        uses: actions/upload-artifact@v4
+        with:
+          name: TilePalQuant build ${{ matrix.name }}
+          path: tilepalquant-root/package
+          # retention-days: 30
