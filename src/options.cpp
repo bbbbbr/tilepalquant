@@ -13,6 +13,8 @@
 
 using namespace std;
 
+#define VERSION "0.9.5"
+
 
 // Order should match: Opts::ditherPatternValues
 const uint8_t ditherPatterns[Opts::ditherPatternsCount][DITHER_WIDTH][DITHER_HEIGHT] = {
@@ -91,7 +93,8 @@ static void showHelp(void) {
     printf(
         "tilepalquant: Console port of rilden's js tiledpalettequant (by bbbbbr)\n"
         "              Original at: https://github.com/rilden/tiledpalettequant\n"
-                "\n"
+        "              Version: " VERSION "\n"
+        "\n"
         "usage: tilepalquant <file>.png [options]\n"
         "-o <filename>         Ouput file (if not used then default is <png file>_out.png)\n"
         "-h                    Show this help output\n"
@@ -114,8 +117,11 @@ static void showHelp(void) {
         "-use_metafile        Read extra options from file <inputfile>.meta (missing not an error)\n"
         "-rand_seed <num>     Specify random number seed for conversion (default: 0)\n"
         "-rand_on             Use a random value for conversion instead of fixed seed,\n"
-        "                         meaning output may not be the same each time\n"
+        "                         meaning output may not be the same each time.\n"
+        "                         Use -v to view generated seed (for later re-use).\n"
         "-export_previews     Export multiple png previews during processing\n"
+        "\n"
+        "Example usage: tilepalquant in.png -cols_per_pal 16 -num_pals 2 -o out.png\n"
         "\n"
     );
 
