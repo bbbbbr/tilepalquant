@@ -576,44 +576,45 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
                 // leads to invalid array access for "left1" and "left2" where -1 makes the
                 // accessed index -1. In JS this results in a value of "undefined for
                 // "left1" or "left2", which is probably what their ">=0" tests below are for.
+                //
+                // Likewise when "right1" and "right2" get +1 they can be extended past the
+                // range of "pIndex[i][..N..]"
                 #define INVALID_IGNORE -1
                 const int up1 = pIndex[i - 1][index1];
                 const int i1 = pIndex[i][index1];
-                const int left1 = (index1 > 0) ? pIndex[i][index1 - 1] : INVALID_IGNORE;
-                const int right1 = pIndex[i][index1 + 1];
+                const int left1  = (index1 > 0)                           ? pIndex[i][index1 - 1] : INVALID_IGNORE;
+                const int right1 = ((index2 + 1) < (int)pIndex[i].size()) ? pIndex[i][index1 + 1] : INVALID_IGNORE;
                 const int up2 = pIndex[i - 1][index2];
                 const int i2 = pIndex[i][index2];
-                const int left2 = (index2 > 0) ? pIndex[i][index2 - 1] : INVALID_IGNORE;
-                const int right2 = pIndex[i][index2 + 1];
+                const int left2  = (index2 > 0)                           ? pIndex[i][index2 - 1] : INVALID_IGNORE;
+                const int right2 = ((index2 + 1) < (int)pIndex[i].size()) ? pIndex[i][index2 + 1] : INVALID_IGNORE;
 
                 double straightDist = upWeight *
                     colorDistance(palettes[p2][i1], palettes[p1][up1]);
-                if (left1 >= INVALID_IGNORE) //  >= 0)
+                if (left1 > INVALID_IGNORE) //  >= 0)
                     straightDist += colorDistance(palettes[p2][i1], palettes[p2][left1]);
-                if (right1 < numColors)
+                if ((right1 < numColors) && (right1 > INVALID_IGNORE))
                     straightDist += colorDistance(palettes[p2][i1], palettes[p2][right1]);
                 straightDist +=
                     upWeight *
                         colorDistance(palettes[p2][i2], palettes[p1][up2]);
-                if (left2 >= INVALID_IGNORE) //  >= 0)
+                if (left2 > INVALID_IGNORE) //  >= 0)
                     straightDist += colorDistance(palettes[p2][i2], palettes[p2][left2]);
-                if (right2 < numColors)
+                if ((right2 < numColors) && (right2 > INVALID_IGNORE))
                     straightDist += colorDistance(palettes[p2][i2], palettes[p2][right2]);
 
-                // TODO: DEBUG: REMOVE
-                if (options.verboseDebug) printf("sortPalettes() loop 8a-3\n");
                 double swappedDist = upWeight *
                     colorDistance(palettes[p2][i2], palettes[p1][up1]);
-                if (left1 >= INVALID_IGNORE) //  >= 0)
+                if (left1 > INVALID_IGNORE) //  >= 0)
                     swappedDist += colorDistance(palettes[p2][i2], palettes[p2][left1]);
-                if (right1 < numColors)
+                if ((right1 < numColors) && (right1 > INVALID_IGNORE))
                     swappedDist += colorDistance(palettes[p2][i2], palettes[p2][right1]);
                 swappedDist +=
                     upWeight *
                         colorDistance(palettes[p2][i1], palettes[p1][up2]);
-                if (left2 >= INVALID_IGNORE) //  >= 0)
+                if (left2 > INVALID_IGNORE) //  >= 0)
                     swappedDist += colorDistance(palettes[p2][i1], palettes[p2][left2]);
-                if (right2 < numColors)
+                if ((right2 < numColors) && (right2 > INVALID_IGNORE))
                     swappedDist += colorDistance(palettes[p2][i1], palettes[p2][right2]);
                 if (swappedDist < straightDist) {
                     // [pIndex[i][index1], pIndex[i][index2]] = [
