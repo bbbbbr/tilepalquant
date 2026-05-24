@@ -367,12 +367,13 @@ int processArgs(int argc, char* argv[], quantOptions & options) {
     initArgs(options);
 
     if (argc < 2) {
-        showHelp();
-        return EXIT_SUCCESS;  // TODO: Block png loading if returning from here
+        printf("Error: input filename missing. Use -h for help\n");
+        return EXIT_FAILURE;
     }
-
-    if (!strcmp(argv[ARG_AT_INPUT_FILENAME], "-h")) {
+    else if (!strcmp(argv[ARG_AT_INPUT_FILENAME], "-h")) {
         showHelp();
+        // printf("Error: input filename missing.\n");
+        return EXIT_SUCCESS;
     }
     else if (argv[ARG_AT_INPUT_FILENAME][0] == '-') {
         printf("Error: input filename looks like an option instead of a filename (\"%s\")\n", argv[ARG_AT_INPUT_FILENAME]);
