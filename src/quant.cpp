@@ -1371,10 +1371,11 @@ static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Im
                         quantizedImage.data[index + RGBA8_ALPHA] = image.data[index + RGBA8_ALPHA];
                         // Set paletteIndex to color zero of closest palette (perhaps since it's typically transparent on consoles)
                         // Changed from js version, see note below about the "pal index calc" bug
+                        // as well as related note about "adjustedIndex"
                         // quantizedImage.colorIndexes[pngIndex] =
                         //    closestPaletteIndex * options.colorsPerPalette;
                         quantizedImage.colorIndexes[pngIndex] =
-                            closestPaletteIndex * (int)palette.size();
+                            closestPaletteIndex * ((int)palette.size()  + adjustedIndex);
                     }
                     else {
                         int closestColorIndex = 0;
@@ -1408,8 +1409,12 @@ static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Im
                         //            Instead using (closestPaletteIndex x palette.size())
                         // quantizedImage.colorIndexes[pngIndex] =
                         //    (closestPaletteIndex * options.colorsPerPalette) + closestColorIndex + adjustedIndex;
+                        //
+                        // "adjustedIndex" is 1 (vs 0) when a transparent color is inserted as the base palette color
+                        // only in the exported PNG/BMP, meaning it's presence is not reflected in palettes.size().
+                        // So it needs to be added in to correctly offset colors into an actually larger sub-palette size
                         quantizedImage.colorIndexes[pngIndex] =
-                            (closestPaletteIndex * (int)palette.size()) + closestColorIndex + adjustedIndex;
+                            (closestPaletteIndex * ((int)palette.size() + adjustedIndex)) + closestColorIndex + adjustedIndex;
                     }
                 }
             }
@@ -1735,17 +1740,17 @@ static void printPalettes(const vector <vector <rgbColor>> & palettes) {
     printf("Num Palettes: %d\n", (int)palettes.size());
     for (int palId = 0; palId < (int)palettes.size(); palId++) {
         printf("--> Palette [%d] Size: %d \n", palId, (int)palettes[palId].size());
-        // for (int colorId = 0; colorId < (int)palettes[palId].size(); colorId++) {
-        //     printf("    - Color[%d][%d] = r:%0.2f, g:%0.2f, b:%0.2f\n",
-        //             palId, colorId, palettes[palId][colorId].ch.r, palettes[palId][colorId].ch.g, palettes[palId][colorId].ch.b);
-        // }
+        for (int colorId = 0; colorId < (int)palettes[palId].size(); colorId++) {
+            printf("    - Color[%d][%d] = r:%0.2f, g:%0.2f, b:%0.2f\n",
+                    palId, colorId, palettes[palId][colorId].ch.r, palettes[palId][colorId].ch.g, palettes[palId][colorId].ch.b);
+        }
     }
 }
 
 static void printPaletteU8(const vector <rgbColorU8> & palette) {
     printf("U8 Palette size: %d\n", (int)palette.size());
-    // for (int colorId = 0; colorId < (int)palette.size(); colorId++) {
-    //     printf("    - Color[%d] = r:%hu, g:%hu, b:%hu\n",
-    //            colorId, palette[colorId].ch.r, palette[colorId].ch.g, palette[colorId].ch.b);
-    // }
+    for (int colorId = 0; colorId < (int)palette.size(); colorId++) {
+        printf("    - Color[%d] = r:%hu, g:%hu, b:%hu\n",
+               colorId, palette[colorId].ch.r, palette[colorId].ch.g, palette[colorId].ch.b);
+    }
 }
