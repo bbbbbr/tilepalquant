@@ -406,8 +406,8 @@ int processArgs(int argc, char* argv[], quantOptions & options) {
           case Opts::indexZeroTranspFromColor:  options.colorZeroValue = options.transparentColorInput;  break;
     }
 
-    // TODO: ditherPattern is used like so:
-    /// const index = ditherPattern[pixel.x & 1][pixel.y & 1];
+    // Note: ditherPattern is used like so:
+    // const index = ditherPattern[pixel.x & 1][pixel.y & 1];
     memcpy(options.ditherPattern, ditherPatterns[options.ditherPatternType], DITHER_PATTERN_AR_SZ);
     options.ditherPixels = ditherPixelsSz[options.ditherPatternType];
 
@@ -418,9 +418,6 @@ int processArgs(int argc, char* argv[], quantOptions & options) {
     if (options.verbose) {
         printf("Arguments: %s\n", options.argsForLoggingToOutput.c_str());
     }
-
-    // TODO:
-    //     if (totalPaletteColors > 256) {  -> Emit png in RGB instead Indexed
 
     return EXIT_SUCCESS;
 }

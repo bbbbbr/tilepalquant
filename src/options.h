@@ -38,13 +38,6 @@ struct Opts
     };
 
 
-    // enum colorValues = {
-    //     defaultColor,          // TODO: RGB(0,0,0)
-    //     sharedColor,           // TODO: RGB() from user
-    //     transparentColorShim,  // TODO: Shim for transparentFromTransparent
-    //     transparentColor,      // TODO: RGB() from user
-    // };
-
     enum ditherModes {
         ditherOff = 0,
         ditherFast,
@@ -86,7 +79,7 @@ struct quantOptions {
     uint8_t       ditherPattern[DITHER_WIDTH][DITHER_HEIGHT];
     float         ditherWeight;
 
-    unsigned int  totalPaletteColors; // TODO: derived from numPalettes * colorsPerPalette
+    unsigned int  totalPaletteColors; // Note: derived from numPalettes * colorsPerPalette
 
     string        sourceImageFilename;
     string        outputImageFilename;
@@ -110,7 +103,7 @@ struct quantOptions {
 #define TILE_HEIGHT_MIN            1
 #define TILE_HEIGHT_MAX            32
 #define NUM_PALETTES_MIN           1
-#define NUM_PALETTES_MAX           16  // TODO: Could this be raised?
+#define NUM_PALETTES_MAX           16  // OPTIONAL FEATURE: Could this be raised?
 #define COLORS_PER_PALETTE_MIN     2
 #define COLORS_PER_PALETTE_MAX     256
 #define BITS_PER_CHANNEL_MIN       2
@@ -129,7 +122,7 @@ struct quantOptions {
 
 #define FRACTION_OF_PIXELS_DEFAULT    0.1
 #define COLOR_ZERO_BEHAVIOUR_DEFAULT  Opts::indexZeroUnique
-// TODO: with C++20 designated inits could be used
+// Note: with C++20 designated inits could be used
 #define COLOR_ZERO_RGB_DEFAULT        {RGBCOL(0, 0, 0)}
 #define SHARED_COLOR_RGB_DEFAULT      {RGBCOL(0, 0, 0)}
 #define TRANSPARENT_COLOR_RGB_DEFAULT {RGBCOL(255, 0, 255)}

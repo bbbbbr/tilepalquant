@@ -146,15 +146,6 @@ static void updatePalettes(const vector <vector <rgbColor>> & palettes, const bo
     if (doSorting) {
         pal = sortPalettes(pal, startIndex);
     }
-/*
-    // TODO: Postmessage update handling... (is it needed?), Don't really need a preview of the palette image since it's embedded in the indexed PNG (at least for <= 256 colors)
-    postMessage({
-        action: Action.UpdatePalettes,
-        palettes: pal,
-        numPalettes: options.numPalettes,
-        numColors: options.colorsPerPalette,
-    });
-*/
 }
 
 static void movePalettesCloser(vector <vector <rgbColor>> & palettes, vector <Tile> & tiles, const pixelEntry & pixel, float alpha) {
@@ -202,8 +193,10 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     }
     else {
         for (int i = 0; i < (int)image.data.size(); i++) {
-            // TODO: Seems to expect each item in the array to be an RGB (OR RGBA ?) entry
-            // If RGBA, why quantizing the Alpha channel?
+            // Note: Seems to expect each item in the array to be an RGBA entry
+            //       But why quantizing the Alpha channel instead of skipping it?
+            //       Maybe since alpha doesn't get stored in the resulting Tiles
+            //       it's easier to just apply it to everything.
             reducedImageData.data[i] = toNbitU8(image.data[i], options.bitsPerChannel);
         }
     }
@@ -229,7 +222,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     randomShuffle.init(pixels.size());
 
     const bool showProgress = true;
-    int iterations = (int)(options.fractionOfPixels * (float)pixels.size());  // TODO: Wonder if this could be an option knob for quality/speed tradeoff
+    int iterations = (int)(options.fractionOfPixels * (float)pixels.size());
     float alpha = 0.3;
     float finalAlpha = 0.05;
 
@@ -248,7 +241,7 @@ int quantizeImage(quantOptions & quantizationOptions, Image & image) {
     const float minPaletteFactor = 0.5;
     const int replaceIterations = 10;
     const bool useMin = true;
-    unsigned int prog[] = {25, 65, 90, 100};  // TODO: What are these doing?
+    unsigned int prog[] = {25, 65, 90, 100};
     if (options.ditherMethod == Opts::ditherOff) {
         prog[3] = 94;
     }
@@ -405,7 +398,6 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
         return palettes;
     }
 
-    // TODO: DEBUG
     if (options.verboseDebug) {
         printf("sortPalettes() startIndex=%d, numPalettes=%d, numColors=%d\n", startIndex, numPalettes, numColors);
         printPalettes(palettes);
@@ -489,7 +481,7 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
             vector <int> revIndex = colorIndex[p1][p2];
             for (int i = 0; i < numColors; i++) {
                 // revIndex[i] = index.indexOf(i);
-                revIndex[i] = indexOf(index, i);  // TODO: VALIDATE MATCHES EXPECTED BEHAVIOR
+                revIndex[i] = indexOf(index, i);
             }
         }
     }
@@ -526,7 +518,7 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     }
 
 
-    // Creates a 2D array initialized with zeros // TODO: of type double probably
+    // Creates a 2D array initialized with zeros (type double)
     // const p1Dist = zeros2(numColors + 2, numColors + 2);
     vector <vector <double>> p1Dist (numColors + 2,  vector <double>(numColors + 2, 0.0) );
 
@@ -608,6 +600,7 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
                 if (right2 < numColors)
                     straightDist += colorDistance(palettes[p2][i2], palettes[p2][right2]);
 
+                // TODO: DEBUG: REMOVE
                 if (options.verboseDebug) printf("sortPalettes() loop 8a-3\n");
                 double swappedDist = upWeight *
                     colorDistance(palettes[p2][i2], palettes[p1][up1]);
@@ -647,7 +640,7 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
         }
         pals.push_back(pal);
     }
-    // TODO: DEBUG
+
     if (options.verboseDebug) {
         printf("== sortPalettes (End) ==\n");
         printPalettes(pals);
@@ -656,7 +649,7 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     return pals;
 }
 /*
-// Creates a 1D array populated with zeros // TODO: of type double probably
+// Creates a 1D array populated with zeros // Of type double probably
 function zeroArray(len) {
     const result = [];
     for (let i = 0; i < len; i++) {
@@ -665,7 +658,7 @@ function zeroArray(len) {
     return result;
 }
 
-// Creates a 2D array populated with zeros // TODO: of type double probably
+// Creates a 2D array populated with zeros // Of type double probably
 function zeros2(len1, len2) {
     const result = [];
     for (let i = 0; i < len1; i++) {
@@ -674,7 +667,7 @@ function zeros2(len1, len2) {
     return result;
 }
 
-// Creates a 3D array populated with zeros // TODO: of type double probably
+// Creates a 3D array populated with zeros // Of type double probably
 function zeros3(len1, len2, len3) {
     const result = [];
     for (let i = 0; i < len1; i++) {
@@ -689,7 +682,7 @@ static void reverse(vector <int> & a, int left, int right) {
     const double middle = (left + right) / 2.0;
     while ((double)left < middle) {
         // [a[left], a[right]] = [a[right], a[left]];  // swap array items
-        // TODO: does this need bounds checking?
+        // TODO: Does this need bounds checking? Seems ok so far but...
         const int tmp = a[left];
         a[left] = a[right];
         a[right] = tmp;
@@ -1084,7 +1077,7 @@ static double colorDistance(const rgbColor & a, const rgbColor & b) {
 // function paletteDistance(palette, tile) {
 static double paletteDistance(const vector <rgbColor> & palette, const Tile & tile) {
     double sum = 0;
-    // TODO: Why making copies of these instead of just using the source ones?
+    // Note: Ignored original making copies and instead used ref to source ones
     // const vector <rgbColor> colors = tile.colors;
     // const vector <int>   counts = tile.counts;
     for (int i = 0; i < (int)tile.colors.size(); i++) {
@@ -1127,8 +1120,8 @@ static Candidate closestPaletteDistance(const vector <vector <rgbColor>> & palet
         distances.push_back(paletteDistance(palette, tile));
     }
     const int index = minIndexDbl(distances);
-    // TODO: This returns a uint and a double, more or less a candidate
-    //       closestPal gets used as an alias for this, then used to call this. the return needs to
+    // Note: This returns a uint and a double, more or less a candidate
+    //       "closestPal" gets used as an alias for this, then used to call this.
     // return [index, distances[index]];
     const Candidate result = {index, distances[index], /* Next two are shims for {color, bright} to avoid warning */ {0,0,0}, 0};
     return result;
@@ -1154,15 +1147,14 @@ static Candidate closestPaletteDistanceDither(const vector <vector <rgbColor>> &
         distances.push_back(paletteDistanceDither(palette, tile));
     }
     const int index = minIndexDbl(distances);
-    // TODO: This returns a uint and a double, more or less a candidate
-    //       closestPal gets used as an alias for this, then used to call this. the return needs to
+    // Note: This returns a uint and a double, more or less a candidate
+    //       "closestPal" gets used as an alias for this, then used to call this.
     // return [index, distances[index]];
     const Candidate result = {index, distances[index], /* Next two are shims for {color, bright} to avoid warning */ {0,0,0}, 0};
     return result;
 }
 
 // function getColor(image, x, y) {
-// TODO: Inline?
 static rgbColor getColor(const Image & image, const unsigned int x, const unsigned int y) {
     // Seems to operate on raw RGBA8888 image buffer
     const unsigned int index = RGBA8888_SZ * (x + (image.width * y));
@@ -1194,8 +1186,12 @@ static Tile extractTile(const Image & image, const unsigned int startX, const un
             if (isColorTransparent(color) || isPixelTransparent(image, x, y)) {
                 continue;
             }
-            // TODO: This is trying to push an entry that contains a reference to the tile, rgbcolor, x and y, they all get used later
-            // TODO: IMPORTANT!: Must push a reference to the parent tile eventually. or at least find a way to derive it
+            // Note: The reference JS version of this included attaching a reference to the parent tile
+            //       that was used to call up that tile later. But since things get copied around in the
+            //       C++ version such that the original tile and it's ordered index in the image can't be
+            //       easily retrived from the pixel, it's easier just to directly embed that tile index as
+            //       a number instead.
+            //
             // tile.pixels.push({ tile, color, x, y });
             const pixelEntry pixel = {tile_id, color, x, y};
             tile.pixels.push_back(pixel);
@@ -1221,7 +1217,6 @@ static Tile extractTile(const Image & image, const unsigned int startX, const un
     return tile;
 }
 
-// TODO: Inline?
 //    function isPixelTransparent(x, y) {
 bool isPixelTransparent(const Image & image, const unsigned int x, const unsigned int y) {
     const unsigned int index = RGBA8888_SZ * (x + image.width * y);
@@ -1340,7 +1335,7 @@ static Image quantizeTiles(const vector <vector <rgbColor>> & palettes, const Im
     if ((options.numPalettes * options.colorsPerPalette) <= 256) {
         addPngColors(reducedPalettes, quantizedImage.paletteData, adjustedIndex);
     }
-    else if (options.verboseDebug) {printf("extractTile(): Image has more than 256 colors\n"); }
+    else if (options.verboseDebug) { printf("Note: extractTile(): Resulting image has more than 256 colors\n"); }
 
     if (options.verboseDebug) printPaletteU8(quantizedImage.paletteData);
 
@@ -1573,7 +1568,7 @@ static void expandPalettesByOneColor(vector <vector <rgbColor>> & palettes, vect
     }
 }
 /*
-// TODO: Dead/unused function?
+// Note: Dead/unused function?
 function colorQuantize1Palette(pixels, randomShuffle, colorsPerPalette) {
     int iterations = (int)(options.fractionOfPixels * (float)pixels.size());
     if (options.dither == Dither.Slow) {
@@ -1713,7 +1708,6 @@ static int maxIndexDbl(vector <double> values) {
 
 // function minIndex(values) {
 // Called with vector <unsigned int> and vector <rgbColor> (aka, palette)
-// This one is for unsigned int  // TODO: do this the C++ way
 static int minIndexDbl(vector <double> values) {
     int minI = 0;
     for (int i = 1; i < (int)values.size(); i++) {
@@ -1740,7 +1734,7 @@ static int indexOf(const vector <int> & vec, int matchValue) {
     for (int index = 0; index < (int)vec.size(); index++) {
         if (vec[index] == matchValue) return index;
     }
-    return 0;  // TODO: May need to switch to int and return -1 to signal failure (or some other method that works with expectations in the code)
+    return 0;  // Note: May need to switch to int and return -1 to signal failure (or some other method that works with expectations in the code)
 }
 
 static rgbColorU8 rgbColorToU8(const rgbColor & col) {
