@@ -388,6 +388,19 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
     const int numPalettes = palettes.size();
     const int numColors = palettes[0].size();
 
+    // NOTE: Fix buffer overruns that occur later (see notes) if
+    //       attempting to sort palettes with only 1 color, which
+    //       can happen if colors per pal is 2 and color slot 0 is
+    //       reserved for transparent.
+    //       Keeping separate from other test below to track the
+    //       reference JS more easily (maybe this is what that
+    //       test is trying to guard against, but it's off by 1?
+    //       Since numColors will be 1 if colors per pal==2 and
+    //       one of the transp color zero modes is on).
+    if ((numColors - startIndex) < 2) {
+        return palettes;
+    }
+
     if ((numColors == 2) && (startIndex == 1)) {
         return palettes;
     }
@@ -439,8 +452,9 @@ static vector <vector <rgbColor>> sortPalettes(const vector <vector <rgbColor>> 
                 // NOTE: Potential out of bounds memory access/buffer overrun here based on
                 //       reference implementation behavior, given certain conditions.
                 //       There are potentially incorrect range assumptions based on number
-                //       of colors, however if processing goes as intended then it does not
-                //       appear to exceed the actual range.
+                //       of colors.
+                //       This happens in particular when ((numColors - startIndex) <= 1), which is now
+                //       guarded against near the start of the function (See NOTE:)
                 const rgbColor p1i1 = palettes[p1][i1];
                 const rgbColor p1i2 = palettes[p1][i2];
                 const rgbColor p2i1 = palettes[p2][index[i1]];
