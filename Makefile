@@ -14,7 +14,7 @@ COBJ = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(CFILES))
 
 BIN_NAME = tilepalquant
 BIN = $(BINDIR)/$(BIN_NAME)$(EXE_EXT)
-PACKFILES = $(BIN) Changelog.md README.md LICENSE
+PACKFILES = $(BIN) Changelog.md Readme.md LICENSE
 PACKBASENAME = $(BIN_NAME)
 
 
