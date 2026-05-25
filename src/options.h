@@ -99,11 +99,11 @@ struct quantOptions {
 
 
 #define TILE_WIDTH_MIN             1
-#define TILE_WIDTH_MAX             32
+#define TILE_WIDTH_MAX             512
 #define TILE_HEIGHT_MIN            1
-#define TILE_HEIGHT_MAX            32
+#define TILE_HEIGHT_MAX            512
 #define NUM_PALETTES_MIN           1
-#define NUM_PALETTES_MAX           16  // OPTIONAL FEATURE: Could this be raised?
+#define NUM_PALETTES_MAX           64
 #define COLORS_PER_PALETTE_MIN     2
 #define COLORS_PER_PALETTE_MAX     256
 #define BITS_PER_CHANNEL_MIN       2

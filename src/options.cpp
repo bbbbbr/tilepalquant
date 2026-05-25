@@ -118,12 +118,12 @@ static void showHelp(void) {
         "-o <filename>         Ouput file (if not used then default is <png file>_out.png)\n"
         "-h                    Show this help output\n"
         "-v                    Verbose output (-vv for extra debug output)\n"
-        "-tile_w <width>       Width  of tiles in pixels    (default: 8, range: 1-32)\n"
-        "-tile_h <height>      Height of tiles in pixels    (default: 8, range: 1-32)\n"
-        "-num_pals <num>       Number of palettes           (default: 8, range: 1-16)\n"
-        "-cols_per_pal <num>   Number of colors per palette (default: 4, range: 2-256)\n"
-        "-bits_per_chan <num>  Bits per RGB color channel   (default: 5, range: 2-8)\n"
-        "-frac_of_px <num>                                  (default: 0.1, range: 0.01- 10)\n"
+        "-tile_w <width>       Width  of tiles in pixels    (default: %d, range: %d-%d)\n"
+        "-tile_h <height>      Height of tiles in pixels    (default: %d, range: %d-%d)\n"
+        "-num_pals <num>       Number of palettes           (default: %d, range: %d-%d)\n"
+        "-cols_per_pal <num>   Number of colors per palette (default: %d, range: %d-%d)\n"
+        "-bits_per_chan <num>  Bits per RGB color channel   (default: %d, range: %d-%d)\n"
+        "-frac_of_px <num>                                  (default: %0.1f, range: %0.1f-%0.1f)\n"
         "-col_zero <mode>      Color index zero behavior (default: unique)\n"
         "                        unique:\n"
         "                        shared: (may specify -shared_col)\n"
@@ -136,7 +136,7 @@ static void showHelp(void) {
         "-dither <mode>       Dithering (off, fast, slow) (default: off)\n"
         "-dither_pat <pat>    Dither pattern (default: diag4)\n"
         "                        (diag4, horiz4, vert4, diag2, horiz2, vert2)\n"
-        "-dither_wt <num>     Dither weight                  (default: 0.5, range: 0.01-1))\n"
+        "-dither_wt <num>     Dither weight                  (default: %0.1f, range: %0.1f-%0.1f))\n"
         "-use_metafile        Read extra options from file <inputfile>.meta (missing not an error)\n"
         "-rand_seed <num>     Specify random number seed for conversion (default: 0)\n"
         "-rand_on             Use a random value for conversion instead of fixed seed,\n"
@@ -145,7 +145,14 @@ static void showHelp(void) {
         "-export_previews     Export multiple png previews during processing\n"
         "\n"
         "Example usage: tilepalquant in.png -cols_per_pal 16 -num_pals 2 -o out.png\n"
-        "\n"
+        "\n",
+        TILE_WIDTH_DEFAULT,         TILE_WIDTH_MIN,         TILE_WIDTH_MAX,
+        TILE_HEIGHT_DEFAULT,        TILE_HEIGHT_MIN,        TILE_HEIGHT_MAX,
+        NUM_PALETTES_DEFAULT,       NUM_PALETTES_MIN,       NUM_PALETTES_MAX,
+        COLORS_PER_PALETTE_DEFAULT, COLORS_PER_PALETTE_MIN, COLORS_PER_PALETTE_MAX,
+        BITS_PER_CHANNEL_DEFAULT,   BITS_PER_CHANNEL_MIN,   BITS_PER_CHANNEL_MAX,
+        FRACTION_OF_PIXELS_DEFAULT, FRACTION_OF_PIXELS_MIN, FRACTION_OF_PIXELS_MAX,
+        DITHER_WEIGHT_DEFAULT,      DITHER_WEIGHT_MIN,      DITHER_WEIGHT_MAX
     );
 }
 
