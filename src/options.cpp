@@ -10,6 +10,7 @@
 
 #include "common.h"
 #include "options.h"
+#include "option_presets.h"
 
 using namespace std;
 
@@ -41,6 +42,8 @@ static void   showHelp(void);
 static void   checkLogRandArgs(quantOptions & options);
 static void   logArgs(int startIndex, int argc, const char* argv[], quantOptions & options);
 static int    processArgs(int startIndex, int argc, const char* argv[], quantOptions & options);
+static void   strStrmToArgCV(stringstream & optionsStr, int & argc, std::vector<char const*> & vec_argv);
+static int    handlePresetArgs(quantOptions & options);
 static int    handleMetaFileArgs(quantOptions & options);
 
 
@@ -100,6 +103,7 @@ static void initArgs(quantOptions & options) {
 
     // Options unique to the console port
     options.argsForLoggingToOutput  = "";
+    options.argsFromPreset          = "";
     options.randomSeed              = RAND_SEED_DEFAULT;
     options.use_metafile            = false;
     options.verbose                 = false;
@@ -117,6 +121,7 @@ static void showHelp(void) {
         "usage: tilepalquant <file>.png [options]\n"
         "-o <filename>         Ouput file (if not used then default is <png file>_out.png)\n"
         "-h                    Show this help output\n"
+        "-help_presets         Show list of available presets\n"
         "-v                    Verbose output (-vv for extra debug output)\n"
         "-tile_w <width>       Width  of tiles in pixels    (default: %d, range: %d-%d)\n"
         "-tile_h <height>      Height of tiles in pixels    (default: %d, range: %d-%d)\n"
@@ -143,6 +148,7 @@ static void showHelp(void) {
         "                         meaning output may not be the same each time.\n"
         "                         Use -v to view generated seed (for later re-use).\n"
         "-export_previews     Export multiple png previews during processing\n"
+        "-preset <mode>       Use preset settings, see -help-presets for options\n"
         "\n"
         "Example usage: tilepalquant in.png -cols_per_pal 16 -num_pals 2 -o out.png\n"
         "\n",
@@ -191,6 +197,9 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
     {
         if (!strcmp(argv[i], "-h")) {
             showHelp();
+        }
+        else if (!strcmp(argv[i], "-help_presets")) {
+            showHelpPresets();
         }
         else if (!strcmp(argv[i], "-vv")) {
             options.verbose = true;
@@ -248,7 +257,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
             else if (mode_str == "transp") options.colorZeroBehaviour       = Opts::indexZeroTranspFromTransp;
             else if (mode_str == "transp_color") options.colorZeroBehaviour = Opts::indexZeroTranspFromColor;
             else {
-                printf("Error: -col_zero must be one of: unique, shared, transp, trans_color\n");
+                printf("Error: -col_zero must be one of: unique, shared, transp, transp_color (found \"%s\")\n", mode_str.c_str());
                 return EXIT_FAILURE;
             }
         }
@@ -297,6 +306,16 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
             options.ditherWeight = CLAMP(options.ditherWeight, (float)DITHER_WEIGHT_MIN, (float)DITHER_WEIGHT_MAX);
         }
 
+        else if (!strcmp(argv[i], "-preset")) {
+            bool returnStatus;
+            string presetStr = argv[++i];
+            options.argsFromPreset = getPresetOptionStr(presetStr.c_str(), returnStatus);
+            if (returnStatus == false) {
+                printf("Error: preset \"%s\" not recognized, must be present in modes listed by \"-help_presets\"\n", presetStr.c_str());
+                return EXIT_FAILURE;
+            }
+        }
+
         else if(!strcmp(argv[i], "-use_metafile")) {
             options.use_metafile = true;
         }
@@ -323,40 +342,66 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
 }
 
 
+static void strStrmToArgCV(stringstream & optionsStr, int & argc, std::vector<char const*> & vec_argv) {
+
+        // Split strings on spaces/newlines
+        vector<string> argStrings;
+        string argEntry;
+        argStrings.clear();
+        while (optionsStr >> argEntry) {
+            argStrings.push_back(argEntry);
+        }
+
+        // Build argv style array
+        argc = static_cast<int>(argStrings.size());
+        vec_argv.clear();
+        vec_argv.reserve(argc + 1); // +1 for null terminator entry (optional with our usage)
+        for (const auto& s : argStrings) {
+            vec_argv.push_back(s.c_str());
+            // printf(" -> arg: %s\n", s.c_str());
+        }
+        vec_argv.push_back(nullptr);
+}
+
+
+// Read in and process a set of args from a file named <inputfile>.meta
+static int handlePresetArgs(quantOptions & options) {
+
+    std::vector<char const*> vec_argv;
+    int argc;
+
+    stringstream presetsSStrm;
+    presetsSStrm.str(options.argsFromPreset);
+
+    // No logging for args derived from presets
+    strStrmToArgCV(presetsSStrm, argc, vec_argv);
+    if (processArgs(ARG_SKIP_NONE, argc, vec_argv.data(), options) == EXIT_FAILURE)
+        return EXIT_FAILURE;
+
+    return EXIT_SUCCESS;
+}
+
+
 // Read in and process a set of args from a file named <inputfile>.meta
 static int handleMetaFileArgs(quantOptions & options) {
 
     string fname = options.sourceImageFilename + ".meta";
     ifstream metaFile(fname);
-    if ( metaFile )
+    if (metaFile)
     {
-        static vector<string> argStrings;
-        static std::vector<char const*> metafile_argv; // Static for program scope, const to ensure c_str() pointers remain valid
+        std::vector<char const*> vec_argv;
+        int argc;
 
         // Read file contents
         stringstream metaFileBuffer;
         metaFileBuffer << metaFile.rdbuf();
         metaFile.close();
 
-        // Split strings on spaces/newlines
-        string argEntry;
-        argStrings.clear();
-        while (metaFileBuffer >> argEntry) {
-            argStrings.push_back(argEntry);
-        }
-
-        // Build argv style array
-        int metafile_argc = static_cast<int>(argStrings.size());
-        metafile_argv.clear();
-        metafile_argv.reserve(metafile_argc + 1); // +1 for null terminator entry (optional with our usage)
-        for (const auto& s : argStrings) {
-            metafile_argv.push_back(s.c_str());
-        }
-        metafile_argv.push_back(nullptr);
+        strStrmToArgCV(metaFileBuffer, argc, vec_argv);
 
         // Append args to logged ones and then process them
-        logArgs(ARG_SKIP_NONE, metafile_argc, metafile_argv.data(), options);
-        if (processArgs(ARG_SKIP_NONE, metafile_argc, metafile_argv.data(), options) == EXIT_FAILURE)
+        logArgs(ARG_SKIP_NONE, argc, vec_argv.data(), options);
+        if (processArgs(ARG_SKIP_NONE, argc, vec_argv.data(), options) == EXIT_FAILURE)
             return EXIT_FAILURE;
 
     } else {
@@ -382,6 +427,10 @@ int processArgs(int argc, char* argv[], quantOptions & options) {
         // printf("Error: input filename missing.\n");
         return EXIT_SUCCESS;
     }
+    else if (!strcmp(argv[ARG_AT_INPUT_FILENAME], "-help_presets")) {
+        showHelpPresets();
+        return EXIT_SUCCESS;
+    }
     else if (argv[ARG_AT_INPUT_FILENAME][0] == '-') {
         printf("Error: input filename looks like an option instead of a filename (\"%s\")\n", argv[ARG_AT_INPUT_FILENAME]);
         return EXIT_FAILURE;
@@ -400,6 +449,9 @@ int processArgs(int argc, char* argv[], quantOptions & options) {
         if (handleMetaFileArgs(options) == EXIT_FAILURE)
         return EXIT_FAILURE;
     }
+
+    if (options.argsFromPreset.length() > 0)
+        handlePresetArgs(options);
 
 
     // Finalize some values based on options
@@ -424,6 +476,8 @@ int processArgs(int argc, char* argv[], quantOptions & options) {
     checkLogRandArgs(options);
     if (options.verbose) {
         printf("Arguments: %s\n", options.argsForLoggingToOutput.c_str());
+        if (options.argsFromPreset.length() > 0)
+            printf("* Args from presets: %s\n", options.argsFromPreset.c_str());
     }
 
     return EXIT_SUCCESS;

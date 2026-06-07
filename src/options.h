@@ -88,6 +88,7 @@ struct quantOptions {
     // Options unique to the console port
     string        argsForLoggingToOutput;
     string        outputLogArgsFilename;
+    string        argsFromPreset;
 
     unsigned int randomSeed;
 
