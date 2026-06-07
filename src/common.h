@@ -1,7 +1,7 @@
 #pragma once
 using namespace std;
 
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 
 
 template <typename T> T MIN(const T& value1, const T& value2)
