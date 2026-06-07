@@ -14,6 +14,8 @@
 
 using namespace std;
 
+#define INCREMENT_YES   true
+#define INCREMENT_NO    false
 
 // Order should match: Opts::ditherPatternValues
 const uint8_t ditherPatterns[Opts::ditherPatternsCount][DITHER_WIDTH][DITHER_HEIGHT] = {
@@ -35,8 +37,9 @@ const uint8_t ditherPixelsSz[Opts::ditherPatternsCount] = {
  };
 
 
-static bool parseRGBStrToRGBCol(rgbColor & color, const char * str);
+static bool   parseRGBStrToRGBCol(rgbColor & color, const char * str);
 static string str_remove_path(string str_in);
+const char *  nextArg(int & curArg, int argc, const char* argv[], bool doIncrement);
 static void   initArgs(quantOptions & options);
 static void   showHelp(void);
 static void   checkLogRandArgs(quantOptions & options);
@@ -78,6 +81,20 @@ static string str_remove_path(string str_in) {
         str_in = str_in.substr(slash_pos, str_in.length() - slash_pos);
 
     return str_in;
+}
+
+
+// Safely return argument if available
+const char * nextArg(int & curArg, int argc, const char* argv[], bool doIncrement) {
+
+    // Check if increment would go past last element in zero based array,
+    // if not available, return empty string
+    if (curArg < (argc - 1)) {
+        const char * retStr = argv[curArg+1];
+        if (doIncrement) curArg++;
+        return retStr;
+    }
+    else return "";
 }
 
 
@@ -212,46 +229,46 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
             if ((i + 1) >= argc) {
                 printf("Error: -o requires a filename, none specified\n");
                 return EXIT_FAILURE;
-            } else if (argv[i+1][0] == '-') {
+            } else if (nextArg(i, argc, argv, INCREMENT_NO)[0] == '-') {
                 printf("Error: next argument after -o looks like an option instead of a filename (\"%s\")\n", argv[i + 1]);
                 return EXIT_FAILURE;
             }
-            options.outputImageFilename = argv[++i];
+            options.outputImageFilename = nextArg(i, argc, argv, INCREMENT_YES);
         }
         else if (!strcmp(argv[i], "-tile_w")) {
-            unsigned int preClamp = options.tileWidth = atoi(argv[++i]);
+            unsigned int preClamp = options.tileWidth = atoi(nextArg(i, argc, argv, INCREMENT_YES));
             options.tileWidth = CLAMP(options.tileWidth, (unsigned int)TILE_WIDTH_MIN, (unsigned int)TILE_WIDTH_MAX);
             if (options.tileWidth != preClamp) printf("-tile_w value out of range, clamped to: %d\n", options.tileWidth);
         }
         else if (!strcmp(argv[i], "-tile_h")) {
-            unsigned int preClamp = options.tileHeight = atoi(argv[++i]);
+            unsigned int preClamp = options.tileHeight = atoi(nextArg(i, argc, argv, INCREMENT_YES));
             options.tileHeight = CLAMP(options.tileHeight, (unsigned int)TILE_HEIGHT_MIN, (unsigned int)TILE_HEIGHT_MAX);
             if (options.tileHeight != preClamp) printf("-tile_h value out of range, clamped to: %d\n", options.tileHeight);
         }
 
         else if (!strcmp(argv[i], "-num_pals")) {
-            unsigned int preClamp = options.numPalettes = atoi(argv[++i]);
+            unsigned int preClamp = options.numPalettes = atoi(nextArg(i, argc, argv, INCREMENT_YES));
             options.numPalettes = CLAMP(options.numPalettes, (unsigned int)NUM_PALETTES_MIN, (unsigned int)NUM_PALETTES_MAX);
             if (options.numPalettes != preClamp) printf("-num_pals value out of range, clamped to: %d\n", options.numPalettes);
         }
         else if (!strcmp(argv[i], "-cols_per_pal")) {
-            unsigned int preClamp = options.colorsPerPalette = atoi(argv[++i]);
+            unsigned int preClamp = options.colorsPerPalette = atoi(nextArg(i, argc, argv, INCREMENT_YES));
             options.colorsPerPalette = CLAMP(options.colorsPerPalette, (unsigned int)COLORS_PER_PALETTE_MIN, (unsigned int)COLORS_PER_PALETTE_MAX);
             if (options.colorsPerPalette != preClamp) printf("-cols_per_pal value out of range, clamped to: %d\n", options.colorsPerPalette);
         }
         else if (!strcmp(argv[i], "-bits_per_chan")) {
-            unsigned int preClamp = options.bitsPerChannel = atoi(argv[++i]);
+            unsigned int preClamp = options.bitsPerChannel = atoi(nextArg(i, argc, argv, INCREMENT_YES));
             options.bitsPerChannel = CLAMP(options.bitsPerChannel, (unsigned int)BITS_PER_CHANNEL_MIN, (unsigned int)BITS_PER_CHANNEL_MAX);
             if (options.bitsPerChannel != preClamp) printf("-bits_per_chan value out of range, clamped to: %d\n", options.bitsPerChannel);
         }
         else if (!strcmp(argv[i], "-frac_of_px")) {
-            float preClamp = options.fractionOfPixels = atof(argv[++i]);
+            float preClamp = options.fractionOfPixels = atof(nextArg(i, argc, argv, INCREMENT_YES));
             options.fractionOfPixels = CLAMP(options.fractionOfPixels, (float)FRACTION_OF_PIXELS_MIN, (float)FRACTION_OF_PIXELS_MAX);
             if (options.fractionOfPixels != preClamp) printf("-frac_of_px value out of range, clamped to: %0.2f\n", options.fractionOfPixels);
         }
 
         else if (!strcmp(argv[i], "-col_zero")) {
-            std::string mode_str = argv[++i];
+            std::string mode_str = nextArg(i, argc, argv, INCREMENT_YES);
             if      (mode_str == "unique") options.colorZeroBehaviour       = Opts::indexZeroUnique;
             else if (mode_str == "shared") options.colorZeroBehaviour       = Opts::indexZeroShared;
             else if (mode_str == "transp") options.colorZeroBehaviour       = Opts::indexZeroTranspFromTransp;
@@ -263,21 +280,21 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
         }
 
         else if (!strcmp(argv[i], "-shared_col")) {
-            if (parseRGBStrToRGBCol(options.sharedColorInput, argv[++i]) == false) {
+            if (parseRGBStrToRGBCol(options.sharedColorInput, nextArg(i, argc, argv, INCREMENT_YES)) == false) {
                 printf("Error: -shared_col format invalid, must be \"r,g,b\". Example: \" -shared_col 255,128,0 \"\n");
                 return EXIT_FAILURE;
             }
         }
 
         else if (!strcmp(argv[i], "-transp_col")) {
-            if (parseRGBStrToRGBCol(options.transparentColorInput, argv[++i]) == false) {
+            if (parseRGBStrToRGBCol(options.transparentColorInput, nextArg(i, argc, argv, INCREMENT_YES)) == false) {
                 printf("Error: -transp_col format invalid, must be \"r,g,b\". Example: \" -transp_col 255,128,0 \"\n");
                 return EXIT_FAILURE;
             }
         }
 
         else if(!strcmp(argv[i], "-dither")) {
-            std::string mode_str = argv[++i];
+            std::string mode_str = nextArg(i, argc, argv, INCREMENT_YES);
             if      (mode_str == "off")  options.ditherMethod = Opts::ditherOff;
             else if (mode_str == "fast") options.ditherMethod = Opts::ditherFast;
             else if (mode_str == "slow") options.ditherMethod = Opts::ditherSlow;
@@ -288,7 +305,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
         }
 
         else if(!strcmp(argv[i], "-dither_pat")) {
-            std::string mode_str = argv[++i];
+            std::string mode_str = nextArg(i, argc, argv, INCREMENT_YES);
             if      (mode_str == "diag4")  options.ditherPatternType = Opts::ditherDiagonal4;
             else if (mode_str == "horiz4") options.ditherPatternType = Opts::ditherHorizontal4;
             else if (mode_str == "vert4")  options.ditherPatternType = Opts::ditherVertical4;
@@ -302,13 +319,13 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
         }
 
         else if (!strcmp(argv[i], "-dither_wt")) {
-            options.ditherWeight = atof(argv[++i]);
+            options.ditherWeight = atof(nextArg(i, argc, argv, INCREMENT_YES));
             options.ditherWeight = CLAMP(options.ditherWeight, (float)DITHER_WEIGHT_MIN, (float)DITHER_WEIGHT_MAX);
         }
 
         else if (!strcmp(argv[i], "-preset")) {
             bool returnStatus;
-            string presetStr = argv[++i];
+            string presetStr = nextArg(i, argc, argv, INCREMENT_YES);
             options.argsFromPreset = getPresetOptionStr(presetStr.c_str(), returnStatus);
             if (returnStatus == false) {
                 printf("Error: preset \"%s\" not recognized, must be present in modes listed by \"-help_presets\"\n", presetStr.c_str());
@@ -321,7 +338,7 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
         }
 
         else if(!strcmp(argv[i], "-rand_seed")) {
-            options.randomSeed = atof(argv[++i]);
+            options.randomSeed = atof(nextArg(i, argc, argv, INCREMENT_YES));
         }
 
         else if(!strcmp(argv[i], "-rand_on")) {
