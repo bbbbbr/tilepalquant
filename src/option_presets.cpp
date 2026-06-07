@@ -5,16 +5,23 @@
 using namespace std;
 
 // See: https://github.com/Optiroc/SuperFamiconv/blob/68e3477d27b80da6e921dcceaa334cc234e591ad/src/Mode.h
+
+// DMG mode is sort of an approximation since there is not support for fixed palettes right now
+#define PRESET_DMG_BG_NAME  "dmg-bg"
+#define PRESET_DMG_BG_OPTS            "-num_pals 1 -cols_per_pal 4 -bits_per_chan 2"
+#define PRESET_DMG_SPR_NAME "dmg-spr"
+#define PRESET_DMG_SPR_OPTS           "-num_pals 2 -cols_per_pal 4 -bits_per_chan 2 -col_zero transp_color"
+
 #define PRESET_GBC_BG_NAME  "gbc-bg"
 #define PRESET_GBC_BG_OPTS            "-num_pals 8 -cols_per_pal 4 -bits_per_chan 5"
 #define PRESET_GBC_SPR_NAME "gbc-spr"
-#define PRESET_GBC_SPR_OPTS           "-num_pals 1 -cols_per_pal 4 -bits_per_chan 5 -col_zero transp_color"
+#define PRESET_GBC_SPR_OPTS           "-num_pals 2 -cols_per_pal 4 -bits_per_chan 5 -col_zero transp_color"
 
-// Doesn't account for fixed palette of NES
+// Doesn't account for fixed colors of NES
 #define PRESET_NES_BG_NAME  "nes-bg"
 #define PRESET_NES_BG_OPTS            "-num_pals 4 -cols_per_pal 4 -col_zero shared -tile_w 16 -tile_h 16"
 #define PRESET_NES_SPR_NAME "nes-spr"
-#define PRESET_NES_SPR_OPTS           "-num_pals 4 -cols_per_pal 4 -col_zero transp_color"
+#define PRESET_NES_SPR_OPTS           "-num_pals 1 -cols_per_pal 4 -col_zero transp_color"
 
 #define PRESET_SMS_BG_NAME  "sms-bg"
 #define PRESET_SMS_BG_OPTS            "-num_pals 2 -cols_per_pal 16 -bits_per_chan 2"
@@ -36,10 +43,12 @@ using namespace std;
 #define PRESET_PCE_SPR_NAME "pce-spr"
 #define PRESET_PCE_SPR_OPTS           "-num_pals 1 -cols_per_pal 16 -bits_per_chan 3 -col_zero transp_color"
 
-#define PRESET_COUNT 12
+#define PRESET_COUNT 14
 
 // Presets
 const char * presets[PRESET_COUNT][2] = {
+    {PRESET_DMG_BG_NAME,  PRESET_DMG_BG_OPTS},
+    {PRESET_DMG_SPR_NAME, PRESET_DMG_SPR_OPTS},
     {PRESET_GBC_BG_NAME,  PRESET_GBC_BG_OPTS},
     {PRESET_GBC_SPR_NAME, PRESET_GBC_SPR_OPTS},
     {PRESET_NES_BG_NAME,  PRESET_NES_BG_OPTS},
