@@ -63,7 +63,7 @@ Example usage: tilepalquant in.png -cols_per_pal 16 -num_pals 2 -o out.png
 ```
 
 ```
-$ bin/tilepalquant -help_presets
+$ tilepalquant -help_presets
 tilepalquant presets (use with -preset <mode>
   Mode       Settings
   ---------  -------------
