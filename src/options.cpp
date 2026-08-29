@@ -362,9 +362,10 @@ static int processArgs(int startIndex, int argc, const char* argv[], quantOption
 static void strStrmToArgCV(stringstream & optionsStr, int & argc, std::vector<char const*> & vec_argv) {
 
         // Split strings on spaces/newlines
-        vector<string> argStrings;
-        string argEntry;
+        // Static to preserve allocation outside of this function
+        static vector<string> argStrings;
         argStrings.clear();
+        string argEntry;
         while (optionsStr >> argEntry) {
             argStrings.push_back(argEntry);
         }
@@ -384,7 +385,8 @@ static void strStrmToArgCV(stringstream & optionsStr, int & argc, std::vector<ch
 // Read in and process a set of args from a file named <inputfile>.meta
 static int handlePresetArgs(quantOptions & options) {
 
-    std::vector<char const*> vec_argv;
+    static std::vector<char const*> vec_argv;
+    vec_argv.clear();
     int argc;
 
     stringstream presetsSStrm;
@@ -406,7 +408,8 @@ static int handleMetaFileArgs(quantOptions & options) {
     ifstream metaFile(fname);
     if (metaFile)
     {
-        std::vector<char const*> vec_argv;
+        static std::vector<char const*> vec_argv;
+        vec_argv.clear();
         int argc;
 
         // Read file contents
